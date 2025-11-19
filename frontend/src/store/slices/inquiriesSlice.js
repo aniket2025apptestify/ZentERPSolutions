@@ -16,9 +16,11 @@ export const fetchInquiries = createAsyncThunk(
     try {
       const params = new URLSearchParams();
       if (filters.status) params.append('status', filters.status);
+      if (filters.clientId) params.append('clientId', filters.clientId);
       if (filters.assignedTo) params.append('assignedTo', filters.assignedTo);
       if (filters.from) params.append('from', filters.from);
       if (filters.to) params.append('to', filters.to);
+      if (filters.search) params.append('search', filters.search);
 
       const response = await api.get(
         `/api/inquiries${params.toString() ? `?${params.toString()}` : ''}`
@@ -83,6 +85,20 @@ export const addFollowUp = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || 'Failed to add follow-up'
+      );
+    }
+  }
+);
+
+export const deleteInquiry = createAsyncThunk(
+  'inquiries/deleteInquiry',
+  async (id, { rejectWithValue }) => {
+    try {
+      await api.delete(`/api/inquiries/${id}`);
+      return id;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to delete inquiry'
       );
     }
   }
@@ -193,6 +209,25 @@ const inquiriesSlice = createSlice({
         state.error = null;
       })
       .addCase(addFollowUp.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload;
+      });
+
+    // Delete inquiry
+    builder
+      .addCase(deleteInquiry.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(deleteInquiry.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.inquiries = state.inquiries.filter((inq) => inq.id !== action.payload);
+        if (state.currentInquiry?.id === action.payload) {
+          state.currentInquiry = null;
+        }
+        state.error = null;
+      })
+      .addCase(deleteInquiry.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload;
       });

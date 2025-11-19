@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
   fetchInquiries,
+  deleteInquiry,
   selectInquiries,
   selectInquiriesStatus,
   selectInquiriesError,
@@ -10,6 +11,8 @@ import {
 } from '../store/slices/inquiriesSlice';
 import { fetchUsers } from '../store/slices/usersSlice';
 import { selectUsers } from '../store/slices/usersSlice';
+import { fetchClients } from '../store/slices/clientsSlice';
+import { selectClients } from '../store/slices/clientsSlice';
 
 const InquiryList = () => {
   const dispatch = useDispatch();
@@ -18,17 +21,21 @@ const InquiryList = () => {
   const status = useSelector(selectInquiriesStatus);
   const error = useSelector(selectInquiriesError);
   const users = useSelector(selectUsers);
+  const clients = useSelector(selectClients);
 
   const [filters, setFilters] = useState({
     status: '',
+    clientId: '',
     assignedTo: '',
     from: '',
     to: '',
+    search: '',
   });
 
   useEffect(() => {
     dispatch(fetchInquiries(filters));
     dispatch(fetchUsers());
+    dispatch(fetchClients());
   }, [dispatch]);
 
   useEffect(() => {
@@ -55,12 +62,25 @@ const InquiryList = () => {
   const handleClearFilters = () => {
     const clearedFilters = {
       status: '',
+      clientId: '',
       assignedTo: '',
       from: '',
       to: '',
+      search: '',
     };
     setFilters(clearedFilters);
     dispatch(fetchInquiries(clearedFilters));
+  };
+
+  const handleDelete = async (inquiry) => {
+    if (window.confirm(`Are you sure you want to delete inquiry for ${inquiry.client?.name || 'this client'}?`)) {
+      try {
+        await dispatch(deleteInquiry(inquiry.id)).unwrap();
+        dispatch(fetchInquiries(filters));
+      } catch (error) {
+        console.error('Delete failed:', error);
+      }
+    }
   };
 
   const getStatusBadgeColor = (status) => {
@@ -113,7 +133,21 @@ const InquiryList = () => {
 
       {/* Filters */}
       <div className="bg-white shadow rounded-lg p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="mb-4">
+          <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
+            Search
+          </label>
+          <input
+            type="text"
+            id="search"
+            name="search"
+            value={filters.search}
+            onChange={handleFilterChange}
+            placeholder="Search by source, project type, location, notes, or client name"
+            className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div>
             <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
               Status
@@ -131,6 +165,26 @@ const InquiryList = () => {
               <option value="VISITED">Visited</option>
               <option value="QUOTED">Quoted</option>
               <option value="CLOSED">Closed</option>
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="clientId" className="block text-sm font-medium text-gray-700 mb-1">
+              Client
+            </label>
+            <select
+              id="clientId"
+              name="clientId"
+              value={filters.clientId}
+              onChange={handleFilterChange}
+              className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            >
+              <option value="">All Clients</option>
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.name} {client.companyName ? `(${client.companyName})` : ''}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -308,12 +362,26 @@ const InquiryList = () => {
                       {new Date(inquiry.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => navigate(`/inquiries/${inquiry.id}`)}
-                        className="text-indigo-600 hover:text-indigo-900"
-                      >
-                        View
-                      </button>
+                      <div className="flex justify-end space-x-2">
+                        <button
+                          onClick={() => navigate(`/inquiries/${inquiry.id}`)}
+                          className="text-indigo-600 hover:text-indigo-900"
+                        >
+                          View
+                        </button>
+                        <button
+                          onClick={() => navigate(`/inquiries/${inquiry.id}`)}
+                          className="text-yellow-600 hover:text-yellow-900"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(inquiry)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

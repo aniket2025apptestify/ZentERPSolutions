@@ -36,7 +36,7 @@ const InquiryDetail = () => {
   const [followUpData, setFollowUpData] = useState({
     type: 'CALL',
     notes: '',
-    followUpDate: '',
+    date: '',
   });
 
   useEffect(() => {
@@ -118,7 +118,7 @@ const InquiryDetail = () => {
       setFollowUpData({
         type: 'CALL',
         notes: '',
-        followUpDate: '',
+        date: '',
       });
       setShowFollowUpForm(false);
       dispatch(fetchInquiryById(id));
@@ -390,8 +390,8 @@ const InquiryDetail = () => {
                     </label>
                     <input
                       type="date"
-                      name="followUpDate"
-                      value={followUpData.followUpDate}
+                      name="date"
+                      value={followUpData.date}
                       onChange={handleFollowUpChange}
                       className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                     />
@@ -431,9 +431,9 @@ const InquiryDetail = () => {
                           <span className="text-sm font-medium text-gray-900">
                             {followUp.type}
                           </span>
-                          {followUp.followUpDate && (
+                          {(followUp.date || followUp.followUpDate) && (
                             <span className="text-xs text-gray-500">
-                              {new Date(followUp.followUpDate).toLocaleDateString()}
+                              {new Date(followUp.date || followUp.followUpDate).toLocaleDateString()}
                             </span>
                           )}
                         </div>

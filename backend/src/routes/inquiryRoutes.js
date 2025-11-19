@@ -20,6 +20,7 @@ router.get('/', inquiryController.getInquiries);
 router.get('/:id', inquiryController.getInquiryById);
 router.post('/', inquiryController.createInquiry);
 router.put('/:id', inquiryController.updateInquiry);
+router.delete('/:id', inquiryController.deleteInquiry);
 router.post('/:id/followups', inquiryController.addFollowUp);
 
 module.exports = router;
