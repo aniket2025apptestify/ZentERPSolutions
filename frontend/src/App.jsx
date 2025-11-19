@@ -10,6 +10,8 @@ import Dashboard from './pages/Dashboard';
 import TenantList from './pages/TenantList';
 import TenantDetail from './pages/TenantDetail';
 import TenantOnboardingWizard from './pages/TenantOnboardingWizard';
+import Users from './pages/Users';
+import RoleBasedRoute from './components/RoleBasedRoute';
 import './App.css';
 
 function App() {
@@ -67,6 +69,20 @@ function App() {
                       <TenantDetail />
                     </Layout>
                   </SuperAdminRoute>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* User Management Routes (DIRECTOR or IT_ADMIN only) */}
+            <Route
+              path="/settings/users"
+              element={
+                <ProtectedRoute>
+                  <RoleBasedRoute allowedRoles={['DIRECTOR', 'IT_ADMIN']}>
+                    <Layout>
+                      <Users />
+                    </Layout>
+                  </RoleBasedRoute>
                 </ProtectedRoute>
               }
             />

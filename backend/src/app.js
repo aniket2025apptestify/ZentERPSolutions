@@ -17,13 +17,10 @@ app.get('/health', (req, res) => {
 // API routes
 const authRoutes = require('./routes/authRoutes');
 const tenantRoutes = require('./routes/tenantRoutes');
-const { resolveTenant } = require('./middleware/tenantResolver');
-
-// Apply tenant resolver to all API routes
-app.use('/api', resolveTenant);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/tenants', tenantRoutes);
+app.use('/api/users', require('./routes/userRoutes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
