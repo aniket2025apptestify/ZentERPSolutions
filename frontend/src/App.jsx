@@ -16,6 +16,9 @@ import InquiryDetail from './pages/InquiryDetail';
 import NewInquiry from './pages/NewInquiry';
 import ClientList from './pages/ClientList';
 import ClientDetail from './pages/ClientDetail';
+import QuotationList from './pages/QuotationList';
+import QuotationDetail from './pages/QuotationDetail';
+import NewQuotation from './pages/NewQuotation';
 import RoleBasedRoute from './components/RoleBasedRoute';
 import './App.css';
 
@@ -141,6 +144,38 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <ClientDetail />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Quotation Management Routes */}
+            <Route
+              path="/quotations"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <QuotationList />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/quotations/create"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <NewQuotation />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/quotations/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <QuotationDetail />
                   </Layout>
                 </ProtectedRoute>
               }

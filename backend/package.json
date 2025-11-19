@@ -13,7 +13,9 @@
     "format": "prettier --write \"src/**/*.js\"",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "backup:db": "node scripts/backup-database.js",
+    "verify:migration": "node scripts/verify-migration.js"
   },
   "keywords": [],
   "author": "",
@@ -26,6 +28,7 @@
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
+    "nodemailer": "^7.0.10",
     "prisma": "^6.0.0"
   },
   "devDependencies": {

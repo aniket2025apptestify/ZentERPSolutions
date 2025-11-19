@@ -28,6 +28,7 @@ app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/clients', require('./routes/clientRoutes'));
 app.use('/api/inquiries', require('./routes/inquiryRoutes'));
 app.use('/api/documents', require('./routes/documentRoutes'));
+app.use('/api/quotations', require('./routes/quotationRoutes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

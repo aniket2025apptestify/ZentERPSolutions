@@ -134,12 +134,21 @@ model Quotation {
   clientId        String
   client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   quotationNumber String   @unique
-  status          String   // DRAFT, SENT, APPROVED, REJECTED
+  status          String   // DRAFT, SENT, APPROVED, REJECTED, CONVERTED
   validityDays    Int?
   preparedBy      String   // userId
   approvedBy      String?
+  sentBy          String?  // userId
+  sentAt          DateTime?
+  rejectedBy      String?  // userId
+  rejectedAt      DateTime?
   discount        Float?
+  subtotal        Float?
+  vatPercent      Float?
+  vatAmount       Float?
   totalAmount     Float?
+  notes           String?
+  attachments     Json?    // Array of Document IDs
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -160,10 +169,11 @@ model QuotationLine {
   runningMeter Float?
   unitRate     Float
   total        Float
-  systemType   String     // system / non-system
+  systemType   String     // SYSTEM, NON_SYSTEM
   materialList Json?
   labourCost   Float?
   overheads    Float?
+  remarks      String?
 }
 
 // ============================================
