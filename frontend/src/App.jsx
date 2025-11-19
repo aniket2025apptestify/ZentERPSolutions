@@ -11,6 +11,9 @@ import TenantList from './pages/TenantList';
 import TenantDetail from './pages/TenantDetail';
 import TenantOnboardingWizard from './pages/TenantOnboardingWizard';
 import Users from './pages/Users';
+import InquiryList from './pages/InquiryList';
+import InquiryDetail from './pages/InquiryDetail';
+import NewInquiry from './pages/NewInquiry';
 import RoleBasedRoute from './components/RoleBasedRoute';
 import './App.css';
 
@@ -83,6 +86,38 @@ function App() {
                       <Users />
                     </Layout>
                   </RoleBasedRoute>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Inquiry Management Routes */}
+            <Route
+              path="/inquiries"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <InquiryList />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/inquiries/new"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <NewInquiry />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/inquiries/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <InquiryDetail />
+                  </Layout>
                 </ProtectedRoute>
               }
             />

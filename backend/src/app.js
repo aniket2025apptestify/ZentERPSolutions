@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -8,6 +9,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Health check route
 app.get('/health', (req, res) => {
@@ -21,6 +25,9 @@ const tenantRoutes = require('./routes/tenantRoutes');
 app.use('/api/auth', authRoutes);
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/clients', require('./routes/clientRoutes'));
+app.use('/api/inquiries', require('./routes/inquiryRoutes'));
+app.use('/api/documents', require('./routes/documentRoutes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
