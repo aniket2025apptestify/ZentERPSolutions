@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,12 +10,496 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Placeholder model - add your models here
-// Example:
-// model User {
-//   id        String   @id @default(uuid())
-//   email     String   @unique
-//   name      String?
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-// }
+// ============================================
+// 1.1 TENANCY TABLES
+// ============================================
+
+model Tenant {
+  id               String   @id @default(cuid())
+  name             String
+  code             String   @unique
+  address          String?
+  logoUrl          String?
+  vatNumber        String?
+  productionStages Json?
+  settings         Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  users                User[]
+  clients              Client[]
+  inquiries            Inquiry[]
+  quotations           Quotation[]
+  projects             Project[]
+  inventoryItems       InventoryItem[]
+  purchaseOrders       PurchaseOrder[]
+  invoices             Invoice[]
+  employees            Employee[]
+  subcontractWorkOrders SubcontractWorkOrder[]
+  documents            Document[]
+  auditLogs            AuditLog[]
+}
+
+enum Role {
+  SUPERADMIN
+  DIRECTOR
+  SALES
+  ESTIMATOR
+  PROJECT_MANAGER
+  PROCUREMENT
+  STOREKEEPER
+  PRODUCTION
+  QC
+  DISPATCH
+  FINANCE
+  HR
+  SUBCONTRACT
+  DOCUMENT_CONTROLLER
+  IT_ADMIN
+}
+
+model User {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  name      String
+  email     String   @unique
+  password  String
+  role      Role
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// 1.2 CRM TABLES
+// ============================================
+
+model Client {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  companyName String?
+  email       String?
+  phone       String?
+  address     String?
+  vatNumber   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  inquiries     Inquiry[]
+  quotations    Quotation[]
+  projects      Project[]
+  deliveryNotes DeliveryNote[]
+  invoices      Invoice[]
+}
+
+model Inquiry {
+  id          String    @id @default(cuid())
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId    String
+  client      Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  source      String
+  projectType String
+  location    String?
+  status      String // NEW, IN_PROGRESS, VISITED, QUOTED, CLOSED
+  assignedTo  String?
+  notes       String?
+  visitDate   DateTime?
+  followUps   Json?
+  attachments Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  quotations Quotation[]
+}
+
+// ============================================
+// 1.3 QUOTATION / ESTIMATION
+// ============================================
+
+model Quotation {
+  id              String   @id @default(cuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  inquiryId       String?
+  inquiry         Inquiry? @relation(fields: [inquiryId], references: [id], onDelete: SetNull)
+  clientId        String
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  quotationNumber String   @unique
+  status          String   // DRAFT, SENT, APPROVED, REJECTED
+  validityDays    Int?
+  preparedBy      String   // userId
+  approvedBy      String?
+  discount        Float?
+  totalAmount     Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  quotationLines QuotationLine[]
+  projects       Project[]
+}
+
+model QuotationLine {
+  id           String     @id @default(cuid())
+  quotationId  String
+  quotation    Quotation  @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  itemName     String
+  width        Float?
+  height       Float?
+  quantity     Int
+  areaSqm      Float?
+  runningMeter Float?
+  unitRate     Float
+  total        Float
+  systemType   String     // system / non-system
+  materialList Json?
+  labourCost   Float?
+  overheads    Float?
+}
+
+// ============================================
+// 1.4 PROJECT & SUB-GROUPS
+// ============================================
+
+model Project {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  projectCode  String   @unique
+  name         String
+  clientId     String
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  quotationId  String?
+  quotation    Quotation? @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+  type         String   // INTERNAL, EXTERNAL
+  startDate    DateTime?
+  endDate      DateTime?
+  status       String   // PLANNED, RUNNING, HOLD, COMPLETED
+  plannedCost  Float?
+  actualCost   Float?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  subGroups            SubGroup[]
+  productionJobs       ProductionJob[]
+  purchaseOrders       PurchaseOrder[]
+  deliveryNotes        DeliveryNote[]
+  invoices             Invoice[]
+  subcontractWorkOrders SubcontractWorkOrder[]
+}
+
+model SubGroup {
+  id              String   @id @default(cuid())
+  projectId       String
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name            String
+  plannedArea     Float?
+  plannedQty      Float?
+  plannedMaterial Json?
+  plannedLabour   Json?
+  actualArea      Float?
+  actualQty       Float?
+  actualMaterial  Json?
+  actualLabour    Json?
+  dispatchedQty   Float    @default(0)
+  completed       Boolean  @default(false)
+
+  // Relations
+  productionJobs       ProductionJob[]
+  purchaseOrders       PurchaseOrder[]
+  deliveryNotes        DeliveryNote[]
+  subcontractWorkOrders SubcontractWorkOrder[]
+}
+
+// ============================================
+// 1.5 PRODUCTION
+// ============================================
+
+model ProductionJob {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  subGroupId    String
+  subGroup      SubGroup @relation(fields: [subGroupId], references: [id], onDelete: Cascade)
+  jobCardNumber String   @unique
+  stage         String   // CUTTING, FABRICATION, MACHINING, ASSEMBLY, GLAZING, PACKING
+  status        String   // NOT_STARTED, IN_PROGRESS, COMPLETED
+  assignedTo    String?
+  plannedHours  Float?
+  actualHours   Float?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  productionStageLogs ProductionStageLog[]
+}
+
+model ProductionStageLog {
+  id             String        @id @default(cuid())
+  productionJobId String
+  productionJob  ProductionJob @relation(fields: [productionJobId], references: [id], onDelete: Cascade)
+  stage          String
+  startedAt      DateTime?
+  completedAt    DateTime?
+  labourUsers    Json?
+  outputQty      Float?
+  qcStatus       String? // PASS, FAIL
+  remarks        String?
+}
+
+// ============================================
+// 1.6 INVENTORY
+// ============================================
+
+model InventoryItem {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  itemName     String
+  itemCode     String   @unique
+  category     String?
+  unit         String
+  openingQty   Float    @default(0)
+  availableQty Float    @default(0)
+  reorderLevel Float?
+  systemItem   Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  stockTransactions StockTransaction[]
+  poLines           POLine[]
+}
+
+model StockTransaction {
+  id            String   @id @default(cuid())
+  itemId        String
+  item          InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  type          String   // IN, OUT
+  referenceType String   // GRN, ISSUE, RETURN
+  referenceId   String
+  quantity      Float
+  balanceAfter  Float
+  createdAt     DateTime @default(now())
+}
+
+// ============================================
+// 1.7 PROCUREMENT
+// ============================================
+
+model PurchaseOrder {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  poNumber    String   @unique
+  vendorId    String
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  subGroupId  String?
+  subGroup    SubGroup? @relation(fields: [subGroupId], references: [id], onDelete: SetNull)
+  status      String   // DRAFT, SENT, APPROVED, REJECTED
+  totalAmount Float
+  createdBy   String
+  approvedBy  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  poLines POLine[]
+  grns    GRN[]
+}
+
+model POLine {
+  id             String        @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder  PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  itemId         String
+  item           InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  description    String?
+  qty            Float
+  unitRate       Float
+  amount         Float
+}
+
+model GRN {
+  id              String        @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  grnNumber       String        @unique
+  receivedDate    DateTime
+  receivedBy      String
+  items           Json
+}
+
+// ============================================
+// 1.8 DISPATCH / DN
+// ============================================
+
+model DeliveryNote {
+  id          String    @id @default(cuid())
+  dnNumber    String    @unique
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  subGroupId  String?
+  subGroup    SubGroup? @relation(fields: [subGroupId], references: [id], onDelete: SetNull)
+  clientId    String
+  client      Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  internal    Boolean   @default(false)
+  createdBy   String
+  createdAt   DateTime  @default(now())
+  acknowledged Boolean  @default(false)
+  ackBy       String?
+  ackDate     DateTime?
+
+  // Relations
+  dnLines DNLine[]
+}
+
+model DNLine {
+  id            String       @id @default(cuid())
+  deliveryNoteId String
+  deliveryNote  DeliveryNote @relation(fields: [deliveryNoteId], references: [id], onDelete: Cascade)
+  description   String
+  qty           Float
+  areaSqm       Float?
+  remarks       String?
+}
+
+// ============================================
+// 1.9 INVOICING
+// ============================================
+
+model Invoice {
+  id            String   @id @default(cuid())
+  invoiceNumber String   @unique
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  type          String   // INTERNAL, EXTERNAL
+  subtotal      Float
+  discount      Float?
+  vatPercent    Float?
+  vatAmount     Float?
+  total         Float
+  status        String   // UNPAID, PARTIALLY_PAID, PAID
+  createdAt     DateTime @default(now())
+
+  // Relations
+  invoiceLines InvoiceLine[]
+}
+
+model InvoiceLine {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  qty         Float
+  unitRate    Float
+  total       Float
+}
+
+// ============================================
+// 1.10 HR / PAYROLL
+// ============================================
+
+model Employee {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name          String
+  designation   String?
+  salary        Float?
+  visaExpiry    DateTime?
+  passportExpiry DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  attendances    Attendance[]
+  payrollRecords PayrollRecord[]
+}
+
+model Attendance {
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date        DateTime
+  status      String   // PRESENT, ABSENT, LEAVE
+  hours       Float?
+  jobLink     Json?    // project/subgroup
+}
+
+model PayrollRecord {
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  month       Int
+  year        Int
+  basicSalary Float
+  overtime    Float?
+  allowances  Float?
+  deductions  Float?
+  netPay      Float
+  generatedAt DateTime @default(now())
+}
+
+// ============================================
+// 1.11 SUBCONTRACTOR
+// ============================================
+
+model SubcontractWorkOrder {
+  id            String    @id @default(cuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  swoNumber     String    @unique
+  vendorId      String
+  projectId     String?
+  project       Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  subGroupId    String?
+  subGroup      SubGroup? @relation(fields: [subGroupId], references: [id], onDelete: SetNull)
+  totalAmount   Float
+  materialIssued Json?
+  status        String    // ISSUED, RECEIVED, CLOSED
+  createdAt     DateTime  @default(now())
+}
+
+// ============================================
+// 1.12 DOCUMENTS & AUDIT LOGS
+// ============================================
+
+model Document {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entityType String
+  entityId   String
+  fileName   String
+  fileUrl    String
+  version    Int      @default(1)
+  uploadedBy String
+  createdAt  DateTime @default(now())
+}
+
+model AuditLog {
+  id         String    @id @default(cuid())
+  tenantId   String?
+  tenant     Tenant?   @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  userId     String?
+  action     String
+  entityType String
+  entityId   String
+  oldData    Json?
+  newData    Json?
+  timestamp  DateTime  @default(now())
+}

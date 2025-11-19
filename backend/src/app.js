@@ -14,8 +14,14 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Zent ERP Backend is running' });
 });
 
-// API routes will be added here
-// app.use('/api', routes);
+// API routes
+const authRoutes = require('./routes/authRoutes');
+const { resolveTenant } = require('./middleware/tenantResolver');
+
+// Apply tenant resolver to all API routes
+app.use('/api', resolveTenant);
+
+app.use('/api/auth', authRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
