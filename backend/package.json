@@ -15,7 +15,10 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "backup:db": "node scripts/backup-database.js",
-    "verify:migration": "node scripts/verify-migration.js"
+    "verify:migration": "node scripts/verify-migration.js",
+    "init:migrations": "node scripts/init-migrations.js",
+    "check:locks": "node scripts/check-db-locks.js",
+    "release:locks": "node scripts/release-db-locks.js"
   },
   "keywords": [],
   "author": "",

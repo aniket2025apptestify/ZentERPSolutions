@@ -19,6 +19,9 @@ import ClientDetail from './pages/ClientDetail';
 import QuotationList from './pages/QuotationList';
 import QuotationDetail from './pages/QuotationDetail';
 import NewQuotation from './pages/NewQuotation';
+import ProjectList from './pages/ProjectList';
+import ProjectDetail from './pages/ProjectDetail';
+import NewProject from './pages/NewProject';
 import RoleBasedRoute from './components/RoleBasedRoute';
 import './App.css';
 
@@ -176,6 +179,38 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <QuotationDetail />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Project Management Routes */}
+            <Route
+              path="/projects"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ProjectList />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/projects/create"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <NewProject />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/projects/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ProjectDetail />
                   </Layout>
                 </ProtectedRoute>
               }
