@@ -14,6 +14,8 @@ import Users from './pages/Users';
 import InquiryList from './pages/InquiryList';
 import InquiryDetail from './pages/InquiryDetail';
 import NewInquiry from './pages/NewInquiry';
+import ClientList from './pages/ClientList';
+import ClientDetail from './pages/ClientDetail';
 import RoleBasedRoute from './components/RoleBasedRoute';
 import './App.css';
 
@@ -117,6 +119,28 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <InquiryDetail />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Client Management Routes */}
+            <Route
+              path="/clients"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ClientList />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/clients/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ClientDetail />
                   </Layout>
                 </ProtectedRoute>
               }

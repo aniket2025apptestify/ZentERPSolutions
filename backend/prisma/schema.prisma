@@ -86,6 +86,7 @@ model Client {
   phone       String?
   address     String?
   vatNumber   String?
+  isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
