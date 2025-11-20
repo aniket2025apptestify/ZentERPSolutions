@@ -24,34 +24,44 @@ const calculateProjectProgress = async (projectId) => {
     }
 
     // Calculate sub-group progress
-    const subGroupsProgress = project.subGroups.map((sg) => {
+    const subGroupsProgress = (project.subGroups || []).map((sg) => {
       let percentComplete = 0;
 
       if (sg.plannedQty && sg.plannedQty > 0) {
         // Use actualQty or dispatchedQty, whichever is higher
-        const completedQty = Math.max(sg.actualQty || 0, sg.dispatchedQty || 0);
-        percentComplete = (completedQty / sg.plannedQty) * 100;
+        const completedQty = Math.max(
+          sg.actualQty || 0,
+          sg.dispatchedQty || 0
+        );
+        percentComplete = Math.min((completedQty / sg.plannedQty) * 100, 100);
       } else if (sg.plannedArea && sg.plannedArea > 0) {
         const completedArea = sg.actualArea || 0;
-        percentComplete = (completedArea / sg.plannedArea) * 100;
+        percentComplete = Math.min((completedArea / sg.plannedArea) * 100, 100);
       }
 
       // Mark as completed if actualQty >= plannedQty or dispatchedQty >= plannedQty
       const isCompleted =
-        (sg.plannedQty && (sg.actualQty >= sg.plannedQty || sg.dispatchedQty >= sg.plannedQty)) ||
-        (sg.plannedArea && sg.actualArea >= sg.plannedArea) ||
-        sg.completed;
+        sg.completed === true ||
+        (sg.plannedQty &&
+          sg.plannedQty > 0 &&
+          ((sg.actualQty !== null && sg.actualQty !== undefined && sg.actualQty >= sg.plannedQty) ||
+            (sg.dispatchedQty !== null && sg.dispatchedQty !== undefined && sg.dispatchedQty >= sg.plannedQty))) ||
+        (sg.plannedArea &&
+          sg.plannedArea > 0 &&
+          sg.actualArea !== null &&
+          sg.actualArea !== undefined &&
+          sg.actualArea >= sg.plannedArea);
 
       return {
         id: sg.id,
-        name: sg.name,
-        plannedQty: sg.plannedQty,
-        actualQty: sg.actualQty,
-        dispatchedQty: sg.dispatchedQty,
-        plannedArea: sg.plannedArea,
-        actualArea: sg.actualArea,
+        name: sg.name || '',
+        plannedQty: sg.plannedQty || null,
+        actualQty: sg.actualQty || null,
+        dispatchedQty: sg.dispatchedQty || 0,
+        plannedArea: sg.plannedArea || null,
+        actualArea: sg.actualArea || null,
         percentComplete: parseFloat(percentComplete.toFixed(2)),
-        completed: isCompleted,
+        completed: isCompleted || false,
       };
     });
 
@@ -63,10 +73,11 @@ const calculateProjectProgress = async (projectId) => {
         : 0;
 
     // Calculate production job statistics
+    const productionJobs = project.productionJobs || [];
     const productionStats = {
-      running: project.productionJobs.filter((job) => job.status === 'IN_PROGRESS').length,
-      completed: project.productionJobs.filter((job) => job.status === 'COMPLETED').length,
-      pending: project.productionJobs.filter((job) => job.status === 'NOT_STARTED').length,
+      running: productionJobs.filter((job) => job.status === 'IN_PROGRESS').length,
+      completed: productionJobs.filter((job) => job.status === 'COMPLETED').length,
+      pending: productionJobs.filter((job) => job.status === 'NOT_STARTED').length,
     };
 
     // Calculate material statistics
@@ -78,11 +89,11 @@ const calculateProjectProgress = async (projectId) => {
     };
 
     // Calculate planned materials from sub-groups
-    project.subGroups.forEach((sg) => {
+    (project.subGroups || []).forEach((sg) => {
       if (sg.plannedMaterial && Array.isArray(sg.plannedMaterial)) {
         sg.plannedMaterial.forEach((material) => {
-          if (material.qty) {
-            materialStats.planned += material.qty;
+          if (material && material.qty) {
+            materialStats.planned += parseFloat(material.qty) || 0;
           }
         });
       }
@@ -188,12 +199,28 @@ const canCompleteProject = async (projectId) => {
     }
 
     // Check if all sub-groups are completed
+    // If no sub-groups exist, project cannot be completed
+    if (!project.subGroups || project.subGroups.length === 0) {
+      return false;
+    }
+
     const allSubGroupsCompleted = project.subGroups.every((sg) => {
-      return (
-        sg.completed ||
-        (sg.plannedQty && (sg.actualQty >= sg.plannedQty || sg.dispatchedQty >= sg.plannedQty)) ||
-        (sg.plannedArea && sg.actualArea >= sg.plannedArea)
-      );
+      if (sg.completed === true) {
+        return true;
+      }
+
+      if (sg.plannedQty && sg.plannedQty > 0) {
+        const actualQty = sg.actualQty || 0;
+        const dispatchedQty = sg.dispatchedQty || 0;
+        return actualQty >= sg.plannedQty || dispatchedQty >= sg.plannedQty;
+      }
+
+      if (sg.plannedArea && sg.plannedArea > 0) {
+        const actualArea = sg.actualArea || 0;
+        return actualArea >= sg.plannedArea;
+      }
+
+      return false;
     });
 
     if (!allSubGroupsCompleted) {
@@ -201,9 +228,11 @@ const canCompleteProject = async (projectId) => {
     }
 
     // Check if all production jobs are completed
-    const allJobsCompleted = project.productionJobs.every(
-      (job) => job.status === 'COMPLETED'
-    );
+    // If no production jobs exist, consider them as completed
+    const productionJobs = project.productionJobs || [];
+    const allJobsCompleted =
+      productionJobs.length === 0 ||
+      productionJobs.every((job) => job.status === 'COMPLETED');
 
     // TODO: Check dispatch completion (Phase 8)
     // TODO: Check labour logs closed (Phase 10)

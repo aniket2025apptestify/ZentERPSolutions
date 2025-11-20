@@ -18,7 +18,9 @@
     "verify:migration": "node scripts/verify-migration.js",
     "init:migrations": "node scripts/init-migrations.js",
     "check:locks": "node scripts/check-db-locks.js",
-    "release:locks": "node scripts/release-db-locks.js"
+    "release:locks": "node scripts/release-db-locks.js",
+    "create:superadmin": "node src/scripts/createSuperAdmin.js",
+    "verify:superadmin": "node src/scripts/verifySuperAdmin.js"
   },
   "keywords": [],
   "author": "",
