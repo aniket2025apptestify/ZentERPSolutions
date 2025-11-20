@@ -1227,24 +1227,52 @@ const createGRN = async (req, res) => {
     for (let i = 0; i < itemUpdates.length; i++) {
       const { itemId, qty, currentQty } = itemUpdates[i];
       const newAvailableQty = currentQty + qty;
+      const grnItem = processedItems[i];
 
-      // Update inventory quantity
+      // Get the inventory item to get rate and update
+      const inventoryItem = await prisma.inventoryItem.findUnique({
+        where: { id: itemId },
+      });
+
+      // Get unit rate from PO line if available
+      let unitRate = null;
+      if (grnItem.itemId) {
+        const poLine = purchaseOrder.poLines.find(
+          (line) => line.itemId === grnItem.itemId
+        );
+        if (poLine) {
+          unitRate = poLine.unitRate;
+        }
+      }
+
+      // Update inventory quantity and lastPurchaseRate
       await prisma.inventoryItem.update({
         where: { id: itemId },
-        data: { availableQty: newAvailableQty },
+        data: {
+          availableQty: newAvailableQty,
+          ...(unitRate && { lastPurchaseRate: unitRate }),
+        },
       });
 
       // Create stock transaction
       await prisma.stockTransaction.create({
         data: {
+          tenantId,
           itemId: itemId,
           type: 'IN',
           referenceType: 'GRN',
           referenceId: grn.id,
-          quantity: qty,
+          qty: qty,
+          rate: unitRate || inventoryItem?.lastPurchaseRate || null,
           balanceAfter: newAvailableQty,
+          batchNo: grnItem?.batchNo || null,
+          remarks: grnItem?.remarks || null,
+          createdBy: receivedBy,
         },
       });
+
+      // Note: Low stock alerts are checked via /api/inventory/check-low-stock endpoint
+      // or can be scheduled as a background job
     }
 
     // Calculate total ordered qty from PO lines

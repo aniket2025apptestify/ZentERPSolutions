@@ -36,6 +36,12 @@ import GRNList from './pages/procurement/GRNList';
 import GRNDetail from './pages/procurement/GRNDetail';
 import VendorPortal from './pages/vendor/VendorPortal';
 import VendorLogin from './pages/vendor/VendorLogin';
+import StockDashboard from './pages/inventory/StockDashboard';
+import InventoryItemDetail from './pages/inventory/InventoryItemDetail';
+import CreateItem from './pages/inventory/CreateItem';
+import MaterialIssue from './pages/inventory/MaterialIssue';
+import WastageReport from './pages/inventory/WastageReport';
+import StockLedger from './pages/inventory/StockLedger';
 import RoleBasedRoute from './components/RoleBasedRoute';
 import './App.css';
 
@@ -362,6 +368,68 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <GRNDetail />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Inventory Routes */}
+            <Route
+              path="/inventory/stock"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <StockDashboard />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/inventory/items/create"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <CreateItem />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/inventory/items/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <InventoryItemDetail />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/inventory/issue"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <MaterialIssue />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/inventory/wastage"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <WastageReport />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/inventory/ledger"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <StockLedger />
                   </Layout>
                 </ProtectedRoute>
               }

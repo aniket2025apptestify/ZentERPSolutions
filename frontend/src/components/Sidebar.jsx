@@ -47,7 +47,9 @@ const Sidebar = ({ isOpen, onToggle, user }) => {
           <nav className="flex-1 overflow-y-auto py-4">
             <ul className="space-y-1 px-2">
               {navigation.map((item) => {
-                const isActive = location.pathname === item.href;
+                // Check if current path starts with the item href (for nested routes)
+                const isActive = location.pathname === item.href || 
+                  (item.href !== '/' && location.pathname.startsWith(item.href));
                 return (
                   <li key={item.name}>
                     <NavLink

@@ -12,6 +12,7 @@ import vendorsReducer from './slices/vendorsSlice';
 import vendorQuotesReducer from './slices/vendorQuotesSlice';
 import purchaseOrdersReducer from './slices/purchaseOrdersSlice';
 import grnReducer from './slices/grnSlice';
+import inventoryReducer from './slices/inventorySlice';
 
 export const store = configureStore({
   reducer: {
@@ -28,6 +29,7 @@ export const store = configureStore({
     vendorQuotes: vendorQuotesReducer,
     purchaseOrders: purchaseOrdersReducer,
     grn: grnReducer,
+    inventory: inventoryReducer,
   },
 });
 

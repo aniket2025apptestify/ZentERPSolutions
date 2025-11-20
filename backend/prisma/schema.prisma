@@ -34,6 +34,8 @@ model Tenant {
   vendors               Vendor[]
   vendorQuotes          VendorQuote[]
   grns                  GRN[]
+  materialIssues        MaterialIssue[]
+  wastageRecords        WastageRecord[]
 }
 
 model User {
@@ -199,11 +201,13 @@ model ProductionJob {
   assignedTo          String?
   plannedHours        Float?
   actualHours         Float?
+  materialConsumption Json?
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   project             Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
   subGroup            SubGroup             @relation(fields: [subGroupId], references: [id], onDelete: Cascade)
   productionStageLogs ProductionStageLog[]
+  materialIssues      MaterialIssue[]
 }
 
 model ProductionStageLog {
@@ -223,29 +227,65 @@ model InventoryItem {
   id                String             @id @default(cuid())
   tenantId          String
   itemName          String
-  itemCode          String             @unique
+  itemCode          String?            @unique
   category          String?
   unit              String
   openingQty        Float              @default(0)
   availableQty      Float              @default(0)
+  reservedQty       Float              @default(0)
   reorderLevel      Float?
   systemItem        Boolean            @default(true)
+  uom               String?
+  lastPurchaseRate  Float?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   poLines           POLine[]
   stockTransactions StockTransaction[]
+  wastageRecords    WastageRecord[]
 }
 
 model StockTransaction {
   id            String        @id @default(cuid())
+  tenantId      String
   itemId        String
-  type          String
-  referenceType String
-  referenceId   String
-  quantity      Float
+  type          String        // IN | OUT | ADJUSTMENT | TRANSFER
+  referenceType String        // GRN | ISSUE | RETURN | ADJUST | PO | DN | RESERVE
+  referenceId   String?
+  qty           Float
+  rate          Float?
   balanceAfter  Float
+  batchNo       String?
+  remarks       String?
+  createdBy     String?
   createdAt     DateTime      @default(now())
+  item          InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+}
+
+model MaterialIssue {
+  id            String        @id @default(cuid())
+  tenantId      String
+  jobId         String
+  projectId     String?
+  subGroupId    String?
+  issuedBy      String
+  issuedAt      DateTime      @default(now())
+  items         Json          // [{ itemId, qty, uom, wastage, remarks }]
+  createdAt     DateTime      @default(now())
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  productionJob ProductionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+}
+
+model WastageRecord {
+  id            String        @id @default(cuid())
+  tenantId      String
+  itemId        String
+  jobId         String?
+  qty           Float
+  reason        String?
+  recordedBy    String
+  recordedAt    DateTime      @default(now())
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   item          InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
