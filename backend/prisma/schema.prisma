@@ -37,6 +37,10 @@ model Tenant {
   materialIssues        MaterialIssue[]
   wastageRecords        WastageRecord[]
   productionJobs        ProductionJob[]
+  qcRecords             QCRecord[]
+  reworkJobs            ReworkJob[]
+  returnRecords         ReturnRecord[]
+  notifications         Notification[]
 }
 
 model User {
@@ -70,6 +74,7 @@ model Client {
   invoices      Invoice[]
   projects      Project[]
   quotations    Quotation[]
+  returnRecords ReturnRecord[]
 }
 
 model Inquiry {
@@ -216,6 +221,7 @@ model ProductionJob {
   materialIssues      MaterialIssue[]
   labourLogs          LabourLog[]
   qcRecords           QCRecord[]
+  reworkJobs          ReworkJob[]
   tenant              Tenant               @relation(fields: [tenantId], references: [id])
 }
 
@@ -303,16 +309,72 @@ model LabourLog {
 }
 
 model QCRecord {
-  id              String        @id @default(cuid())
-  productionJobId String
-  inspectorId     String
+  id              String         @id @default(cuid())
   tenantId        String
-  stage           String
-  qcStatus        String // PASS | FAIL
-  defects         Json? // [{desc, photoDocId}]
+  productionJobId String?
+  deliveryNoteId  String?
+  inspectorId     String
+  stage           String?
+  qcStatus        String // PASS | FAIL | NA
+  inspectedAt     DateTime       @default(now())
+  defects         Json? // [{desc, severity, photoDocId}]
   remarks         String?
-  createdAt       DateTime      @default(now())
-  productionJob   ProductionJob @relation(fields: [productionJobId], references: [id], onDelete: Cascade)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  productionJob   ProductionJob? @relation(fields: [productionJobId], references: [id], onDelete: Cascade)
+  deliveryNote    DeliveryNote?  @relation(fields: [deliveryNoteId], references: [id], onDelete: Cascade)
+  tenant          Tenant         @relation(fields: [tenantId], references: [id])
+}
+
+model ReworkJob {
+  id                    String         @id @default(cuid())
+  tenantId              String
+  sourceProductionJobId String?
+  sourceDNId            String?
+  assignedTo            String?
+  createdBy             String
+  status                String // OPEN | IN_PROGRESS | COMPLETED | CANCELLED
+  expectedHours         Float?
+  actualHours           Float?
+  notes                 String?
+  materialNeeded        Json? // [{itemId, qty}]
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  sourceProductionJob   ProductionJob? @relation(fields: [sourceProductionJobId], references: [id])
+  sourceDN              DeliveryNote?  @relation(fields: [sourceDNId], references: [id])
+  tenant                Tenant         @relation(fields: [tenantId], references: [id])
+}
+
+model ReturnRecord {
+  id           String       @id @default(cuid())
+  tenantId     String
+  dnId         String
+  clientId     String
+  reason       String
+  items        Json // [{dnLineId, itemId, qty, remarks}]
+  status       String // PENDING | INSPECTED | ACCEPTED | REJECTED
+  inspectedBy  String?
+  inspectedAt  DateTime?
+  outcome      String? // REWORK | SCRAP | ACCEPT_RETURN
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  deliveryNote DeliveryNote @relation(fields: [dnId], references: [id], onDelete: Cascade)
+  client       Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  userId    String?
+  type      String // QC_FAIL | RETURN_CREATED | REWORK_CREATED | etc.
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  link      String? // URL to related entity
+  metadata  Json? // Additional data
+  createdAt DateTime @default(now())
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model WastageRecord {
@@ -384,21 +446,24 @@ model GRN {
 }
 
 model DeliveryNote {
-  id           String    @id @default(cuid())
-  dnNumber     String    @unique
-  projectId    String
-  subGroupId   String?
-  clientId     String
-  internal     Boolean   @default(false)
-  createdBy    String
-  createdAt    DateTime  @default(now())
-  acknowledged Boolean   @default(false)
-  ackBy        String?
-  ackDate      DateTime?
-  dnLines      DNLine[]
-  client       Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  subGroup     SubGroup? @relation(fields: [subGroupId], references: [id])
+  id            String         @id @default(cuid())
+  dnNumber      String         @unique
+  projectId     String
+  subGroupId    String?
+  clientId      String
+  internal      Boolean        @default(false)
+  createdBy     String
+  createdAt     DateTime       @default(now())
+  acknowledged  Boolean        @default(false)
+  ackBy         String?
+  ackDate       DateTime?
+  dnLines       DNLine[]
+  qcRecords     QCRecord[]
+  reworkJobs    ReworkJob[]
+  returnRecords ReturnRecord[]
+  client        Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  subGroup      SubGroup?      @relation(fields: [subGroupId], references: [id])
 }
 
 model DNLine {

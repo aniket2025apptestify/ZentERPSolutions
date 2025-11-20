@@ -661,6 +661,8 @@ const logJobHours = async (req, res) => {
  * Create QC record for a job
  * POST /api/production/jobs/:id/qc
  */
+// DEPRECATED: This endpoint is kept for backward compatibility
+// Please use /api/qc/production/:productionJobId instead
 const createQCRecord = async (req, res) => {
   try {
     const { id } = req.params;
@@ -671,14 +673,14 @@ const createQCRecord = async (req, res) => {
       return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
-    if (!inspectorId || !stage || !qcStatus) {
+    if (!inspectorId || !qcStatus) {
       return res.status(400).json({
-        message: 'inspectorId, stage, and qcStatus are required',
+        message: 'inspectorId and qcStatus are required',
       });
     }
 
-    if (!['PASS', 'FAIL'].includes(qcStatus)) {
-      return res.status(400).json({ message: 'qcStatus must be PASS or FAIL' });
+    if (!['PASS', 'FAIL', 'NA'].includes(qcStatus)) {
+      return res.status(400).json({ message: 'qcStatus must be PASS, FAIL, or NA' });
     }
 
     // Get job
@@ -695,36 +697,38 @@ const createQCRecord = async (req, res) => {
 
     // Use transaction for atomicity
     await prisma.$transaction(async (tx) => {
-      // Create QC record
-      // Note: Prisma generates QCRecord model as qCRecord in the client
+      // Create QC record with all required fields
       await tx.qCRecord.create({
         data: {
           productionJobId: id,
           inspectorId,
           tenantId,
-          stage,
+          stage: stage || job.stage || null,
           qcStatus,
           defects: defects || null,
           remarks: remarks || null,
+          inspectedAt: new Date(), // Explicitly set inspectedAt
         },
       });
 
-      // Update stage log QC status
-      const stageLog = await tx.productionStageLog.findFirst({
-        where: {
-          productionJobId: id,
-          stage: stage,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
-
-      if (stageLog) {
-        await tx.productionStageLog.update({
-          where: { id: stageLog.id },
-          data: { qcStatus },
+      // Update stage log QC status if stage is provided
+      if (stage) {
+        const stageLog = await tx.productionStageLog.findFirst({
+          where: {
+            productionJobId: id,
+            stage: stage,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
         });
+
+        if (stageLog) {
+          await tx.productionStageLog.update({
+            where: { id: stageLog.id },
+            data: { qcStatus },
+          });
+        }
       }
 
       // If QC fails, set job status to REWORK
@@ -743,7 +747,7 @@ const createQCRecord = async (req, res) => {
           entityId: id,
           newData: {
             reason: 'QC_FAIL',
-            stage,
+            stage: stage || job.stage,
             remarks,
           },
         });
@@ -757,7 +761,7 @@ const createQCRecord = async (req, res) => {
         entityType: 'ProductionJob',
         entityId: id,
         newData: {
-          stage,
+          stage: stage || job.stage,
           qcStatus,
           defects,
         },

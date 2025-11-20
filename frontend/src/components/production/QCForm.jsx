@@ -10,16 +10,19 @@ const QCForm = ({ jobId, stage, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     qcStatus: 'PASS',
     remarks: '',
-    defects: [{ desc: '', photoDocId: '' }],
+    defects: [{ desc: '', severity: 'MEDIUM', photoDocId: '' }],
+    createRework: false,
+    reworkExpectedHours: '',
+    reworkAssignedTo: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: type === 'checkbox' ? checked : value,
     }));
   };
 
@@ -40,7 +43,7 @@ const QCForm = ({ jobId, stage, onClose, onSuccess }) => {
   const addDefect = () => {
     setFormData((prev) => ({
       ...prev,
-      defects: [...prev.defects, { desc: '', photoDocId: '' }],
+      defects: [...prev.defects, { desc: '', severity: 'MEDIUM', photoDocId: '' }],
     }));
   };
 
@@ -74,6 +77,15 @@ const QCForm = ({ jobId, stage, onClose, onSuccess }) => {
                 ? formData.defects.filter((d) => d.desc.trim() !== '')
                 : null,
             remarks: formData.remarks || undefined,
+            createRework: formData.qcStatus === 'FAIL' ? formData.createRework : false,
+            reworkExpectedHours:
+              formData.qcStatus === 'FAIL' && formData.createRework && formData.reworkExpectedHours
+                ? parseFloat(formData.reworkExpectedHours)
+                : undefined,
+            reworkAssignedTo:
+              formData.qcStatus === 'FAIL' && formData.createRework && formData.reworkAssignedTo
+                ? formData.reworkAssignedTo
+                : undefined,
           },
         })
       ).unwrap();
@@ -128,51 +140,113 @@ const QCForm = ({ jobId, stage, onClose, onSuccess }) => {
           </div>
 
           {formData.qcStatus === 'FAIL' && (
-            <div className="mb-4">
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  Defects
-                </label>
-                <button
-                  type="button"
-                  onClick={addDefect}
-                  className="text-sm text-blue-600 hover:text-blue-800"
-                >
-                  + Add Defect
-                </button>
-              </div>
-              {formData.defects.map((defect, index) => (
-                <div key={index} className="mb-2 flex gap-2">
-                  <input
-                    type="text"
-                    value={defect.desc}
-                    onChange={(e) =>
-                      handleDefectChange(index, 'desc', e.target.value)
-                    }
-                    className="flex-1 border border-gray-300 rounded-md px-3 py-2"
-                    placeholder="Defect description"
-                  />
-                  <input
-                    type="text"
-                    value={defect.photoDocId}
-                    onChange={(e) =>
-                      handleDefectChange(index, 'photoDocId', e.target.value)
-                    }
-                    className="w-32 border border-gray-300 rounded-md px-3 py-2"
-                    placeholder="Photo Doc ID"
-                  />
-                  {formData.defects.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeDefect(index)}
-                      className="px-3 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200"
-                    >
-                      Remove
-                    </button>
-                  )}
+            <>
+              <div className="mb-4">
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Defects
+                  </label>
+                  <button
+                    type="button"
+                    onClick={addDefect}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    + Add Defect
+                  </button>
                 </div>
-              ))}
-            </div>
+                {formData.defects.map((defect, index) => (
+                  <div key={index} className="mb-2 flex gap-2">
+                    <input
+                      type="text"
+                      value={defect.desc}
+                      onChange={(e) =>
+                        handleDefectChange(index, 'desc', e.target.value)
+                      }
+                      className="flex-1 border border-gray-300 rounded-md px-3 py-2"
+                      placeholder="Defect description"
+                    />
+                    <select
+                      value={defect.severity}
+                      onChange={(e) =>
+                        handleDefectChange(index, 'severity', e.target.value)
+                      }
+                      className="w-32 border border-gray-300 rounded-md px-3 py-2"
+                    >
+                      <option value="LOW">Low</option>
+                      <option value="MEDIUM">Medium</option>
+                      <option value="HIGH">High</option>
+                    </select>
+                    <input
+                      type="text"
+                      value={defect.photoDocId}
+                      onChange={(e) =>
+                        handleDefectChange(index, 'photoDocId', e.target.value)
+                      }
+                      className="w-32 border border-gray-300 rounded-md px-3 py-2"
+                      placeholder="Photo Doc ID"
+                    />
+                    {formData.defects.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeDefect(index)}
+                        className="px-3 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="mb-4">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    name="createRework"
+                    checked={formData.createRework}
+                    onChange={handleChange}
+                    className="mr-2"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Create Rework Job
+                  </span>
+                </label>
+              </div>
+
+              {formData.createRework && (
+                <>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Expected Hours
+                    </label>
+                    <input
+                      type="number"
+                      name="reworkExpectedHours"
+                      value={formData.reworkExpectedHours}
+                      onChange={handleChange}
+                      step="0.5"
+                      min="0"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      placeholder="Expected hours for rework"
+                    />
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Assign To (User ID)
+                    </label>
+                    <input
+                      type="text"
+                      name="reworkAssignedTo"
+                      value={formData.reworkAssignedTo}
+                      onChange={handleChange}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      placeholder="Enter user ID (optional)"
+                    />
+                  </div>
+                </>
+              )}
+            </>
           )}
 
           <div className="flex gap-2">

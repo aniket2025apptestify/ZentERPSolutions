@@ -45,6 +45,10 @@ import StockLedger from './pages/inventory/StockLedger';
 import ProductionBoard from './pages/production/ProductionBoard';
 import JobDetail from './pages/production/JobDetail';
 import CreateJob from './pages/production/CreateJob';
+import QCDashboard from './pages/qc/QCDashboard';
+import QCDetail from './pages/qc/QCDetail';
+import ReworkBoard from './pages/rework/ReworkBoard';
+import ReturnManagement from './pages/returns/ReturnManagement';
 import RoleBasedRoute from './components/RoleBasedRoute';
 import './App.css';
 
@@ -465,6 +469,52 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <JobDetail />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* QC Routes */}
+            <Route
+              path="/qc"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <QCDashboard />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/qc/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <QCDetail />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Rework Routes */}
+            <Route
+              path="/rework"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ReworkBoard />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Returns Routes */}
+            <Route
+              path="/returns"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ReturnManagement />
                   </Layout>
                 </ProtectedRoute>
               }

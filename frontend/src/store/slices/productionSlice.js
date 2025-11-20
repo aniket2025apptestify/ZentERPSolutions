@@ -95,7 +95,8 @@ export const createQCRecord = createAsyncThunk(
   'production/createQCRecord',
   async ({ jobId, payload }, { rejectWithValue }) => {
     try {
-      const response = await api.post(`/api/production/jobs/${jobId}/qc`, payload);
+      // Use the new QC API endpoint
+      const response = await api.post(`/api/qc/production/${jobId}`, payload);
       return response.data;
     } catch (error) {
       return rejectWithValue(

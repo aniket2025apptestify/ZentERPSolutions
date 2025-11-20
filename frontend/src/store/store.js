@@ -14,6 +14,9 @@ import purchaseOrdersReducer from './slices/purchaseOrdersSlice';
 import grnReducer from './slices/grnSlice';
 import inventoryReducer from './slices/inventorySlice';
 import productionReducer from './slices/productionSlice';
+import qcReducer from './slices/qcSlice';
+import reworkReducer from './slices/reworkSlice';
+import returnsReducer from './slices/returnsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -32,6 +35,9 @@ export const store = configureStore({
     grn: grnReducer,
     inventory: inventoryReducer,
     production: productionReducer,
+    qc: qcReducer,
+    rework: reworkReducer,
+    returns: returnsReducer,
   },
 });
 
