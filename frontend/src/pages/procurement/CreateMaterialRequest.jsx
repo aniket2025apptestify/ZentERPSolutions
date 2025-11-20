@@ -30,7 +30,7 @@ const CreateMaterialRequest = () => {
   const [formData, setFormData] = useState({
     projectId: projectId || '',
     subGroupId: subGroupId || '',
-    requestedBy: currentUser?.userId || '',
+    requestedBy: currentUser?.id || '',
     notes: '',
   });
 

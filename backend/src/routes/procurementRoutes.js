@@ -22,6 +22,10 @@ router.get(
   '/material-requests/:id',
   procurementController.getMaterialRequestById
 );
+router.post(
+  '/material-requests/:mrId/send-to-vendor',
+  procurementController.sendMRToVendor
+);
 router.get(
   '/material-requests/:mrId/vendor-quotes',
   procurementController.getVendorQuotesForMR

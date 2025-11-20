@@ -142,14 +142,52 @@ const MaterialRequestDetail = () => {
               ))}
             </div>
           )}
-          {materialRequest.status === 'QUOTED' && (
+          <div className="mt-4 space-y-2">
+            <div className="flex gap-2">
+              <button
+                onClick={() => navigate(`/procurement/material-requests/${id}/enter-quote`)}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+              >
+                + Enter Vendor Quote
+              </button>
+              {materialRequest.status === 'QUOTED' && vendorQuotes.length > 0 && (
+                <button
+                  onClick={() => navigate(`/procurement/mr/${id}/quotes`)}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Compare Quotes & Create PO
+                </button>
+              )}
+            </div>
             <button
-              onClick={() => navigate(`/procurement/mr/${id}/quotes`)}
-              className="mt-4 w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              onClick={async () => {
+                const vendorId = prompt('Enter Vendor ID to send MR via email:');
+                if (vendorId) {
+                  try {
+                    const response = await fetch(`/api/procurement/material-requests/${id}/send-to-vendor`, {
+                      method: 'POST',
+                      headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                      },
+                      body: JSON.stringify({ vendorId }),
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                      alert('Material Request sent to vendor successfully!');
+                    } else {
+                      alert('Error: ' + (data.message || 'Failed to send'));
+                    }
+                  } catch (err) {
+                    alert('Error sending email: ' + err.message);
+                  }
+                }
+              }}
+              className="w-full px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
             >
-              Compare Quotes & Create PO
+              📧 Send MR to Vendor via Email
             </button>
-          )}
+          </div>
         </div>
       </div>
 

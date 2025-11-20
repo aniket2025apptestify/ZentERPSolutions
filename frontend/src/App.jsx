@@ -25,11 +25,17 @@ import NewProject from './pages/NewProject';
 import MaterialRequestList from './pages/procurement/MaterialRequestList';
 import CreateMaterialRequest from './pages/procurement/CreateMaterialRequest';
 import MaterialRequestDetail from './pages/procurement/MaterialRequestDetail';
+import EnterVendorQuote from './pages/procurement/EnterVendorQuote';
+import CompareVendorQuotes from './pages/procurement/CompareVendorQuotes';
 import VendorList from './pages/procurement/VendorList';
 import PurchaseOrderList from './pages/procurement/PurchaseOrderList';
 import CreatePurchaseOrder from './pages/procurement/CreatePurchaseOrder';
 import PurchaseOrderDetail from './pages/procurement/PurchaseOrderDetail';
 import CreateGRN from './pages/procurement/CreateGRN';
+import GRNList from './pages/procurement/GRNList';
+import GRNDetail from './pages/procurement/GRNDetail';
+import VendorPortal from './pages/vendor/VendorPortal';
+import VendorLogin from './pages/vendor/VendorLogin';
 import RoleBasedRoute from './components/RoleBasedRoute';
 import './App.css';
 
@@ -256,6 +262,41 @@ function App() {
               }
             />
             <Route
+              path="/procurement/material-requests/:mrId/enter-quote"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <EnterVendorQuote />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/procurement/mr/:mrId/quotes"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <CompareVendorQuotes />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Vendor Portal Routes (Public) */}
+            <Route path="/vendor/login" element={<VendorLogin />} />
+            <Route path="/vendor/quote/:mrId" element={<VendorPortal />} />
+            <Route
+              path="/vendor/quote-success"
+              element={
+                <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                  <div className="bg-white shadow rounded-lg p-8 text-center">
+                    <h1 className="text-2xl font-bold text-green-600 mb-4">Quote Submitted!</h1>
+                    <p className="text-gray-600">Your quote has been submitted successfully.</p>
+                  </div>
+                </div>
+              }
+            />
+            <Route
               path="/procurement/vendors"
               element={
                 <ProtectedRoute>
@@ -296,11 +337,31 @@ function App() {
               }
             />
             <Route
+              path="/procurement/grn"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <GRNList />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/procurement/grn/create"
               element={
                 <ProtectedRoute>
                   <Layout>
                     <CreateGRN />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/procurement/grn/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <GRNDetail />
                   </Layout>
                 </ProtectedRoute>
               }

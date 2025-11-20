@@ -22,7 +22,7 @@ const CreateGRN = () => {
 
   const [formData, setFormData] = useState({
     purchaseOrderId: poId || '',
-    receivedBy: currentUser?.userId || '',
+    receivedBy: currentUser?.id || '',
     receivedDate: new Date().toISOString().split('T')[0],
   });
 

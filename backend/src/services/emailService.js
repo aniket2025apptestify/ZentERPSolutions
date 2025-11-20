@@ -164,8 +164,141 @@ const isEmailConfigured = () => {
   );
 };
 
+/**
+ * Send Material Request to vendors for quotation
+ * @param {Object} options - Email options
+ * @param {Object} options.materialRequest - Material Request object
+ * @param {Object} options.vendor - Vendor object
+ * @param {String} options.quoteLink - Link for vendor to submit quote (optional)
+ * @returns {Promise<Object>} Email send result
+ */
+const sendMaterialRequestToVendor = async ({ materialRequest, vendor, quoteLink }) => {
+  try {
+    const transporter = createTransporter();
+
+    if (!transporter) {
+      throw new Error('Email service not configured');
+    }
+
+    const vendorEmail = vendor.email;
+
+    if (!vendorEmail) {
+      throw new Error('Vendor email not found');
+    }
+
+    const subject = `Material Request ${materialRequest.requestNumber} - Quotation Request`;
+
+    const itemsHtml = Array.isArray(materialRequest.items)
+      ? materialRequest.items
+          .map(
+            (item, index) => `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${item.itemName || '-'}</td>
+            <td>${item.qty || 0}</td>
+            <td>${item.unit || '-'}</td>
+          </tr>
+        `
+          )
+          .join('')
+      : '';
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #2563eb; color: white; padding: 20px; text-align: center; }
+          .content { padding: 20px; background-color: #f9f9f9; }
+          .footer { padding: 20px; text-align: center; font-size: 12px; color: #666; }
+          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+          th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+          th { background-color: #2563eb; color: white; }
+          .button { display: inline-block; padding: 12px 24px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Material Request for Quotation</h1>
+          </div>
+          <div class="content">
+            <p>Dear ${vendor.name},</p>
+            <p>We are requesting a quotation for the following material request:</p>
+            
+            <h3>Request Details</h3>
+            <p><strong>Request Number:</strong> ${materialRequest.requestNumber}</p>
+            <p><strong>Requested Date:</strong> ${new Date(materialRequest.requestedDate).toLocaleDateString()}</p>
+            ${materialRequest.project ? `<p><strong>Project:</strong> ${materialRequest.project.projectCode || materialRequest.project.name || '-'}</p>` : ''}
+            ${materialRequest.notes ? `<p><strong>Notes:</strong> ${materialRequest.notes}</p>` : ''}
+            
+            <h3>Requested Items</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Item Name</th>
+                  <th>Quantity</th>
+                  <th>Unit</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHtml}
+              </tbody>
+            </table>
+            
+            ${quoteLink ? `
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${quoteLink}" class="button">Submit Quote Online</a>
+              </div>
+              <p>Alternatively, you can reply to this email with your quotation details.</p>
+            ` : `
+              <p>Please reply to this email with your quotation including:</p>
+              <ul>
+                <li>Unit rates for each item</li>
+                <li>Total amount</li>
+                <li>Lead time (delivery days)</li>
+                <li>Validity period</li>
+              </ul>
+            `}
+            
+            <p>Thank you for your prompt response.</p>
+          </div>
+          <div class="footer">
+            <p>This is an automated email. Please reply with your quotation.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const mailOptions = {
+      from: `"${process.env.SMTP_FROM_NAME || 'Zent ERP'}" <${process.env.SMTP_USER}>`,
+      to: vendorEmail,
+      subject: subject,
+      html: htmlContent,
+      replyTo: process.env.SMTP_REPLY_TO || process.env.SMTP_USER,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+
+    return {
+      success: true,
+      messageId: info.messageId,
+      to: vendorEmail,
+    };
+  } catch (error) {
+    console.error('Error sending material request email:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   sendQuotationEmail,
+  sendMaterialRequestToVendor,
   isEmailConfigured,
 };
 

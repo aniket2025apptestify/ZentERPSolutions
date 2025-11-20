@@ -5,6 +5,7 @@ const {
   generatePONumber,
   generateGRNNumber,
 } = require('../services/sequenceService');
+const { sendMaterialRequestToVendor } = require('../services/emailService');
 const { Role } = require('@prisma/client');
 
 // ==================== MATERIAL REQUEST ====================
@@ -227,6 +228,105 @@ const getMaterialRequestById = async (req, res) => {
     res.json(materialRequest);
   } catch (error) {
     console.error('Get material request error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+/**
+ * Send Material Request to Vendor via Email
+ * POST /api/procurement/material-requests/:mrId/send-to-vendor
+ */
+const sendMRToVendor = async (req, res) => {
+  try {
+    const { mrId } = req.params;
+    const { vendorId } = req.body;
+    const tenantId = req.tenantId;
+
+    if (!tenantId) {
+      return res.status(400).json({ message: 'Tenant ID is required' });
+    }
+
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ message: 'User authentication required' });
+    }
+
+    if (!vendorId) {
+      return res.status(400).json({ message: 'Vendor ID is required' });
+    }
+
+    // Get Material Request
+    const materialRequest = await prisma.materialRequest.findFirst({
+      where: {
+        id: mrId,
+        tenantId,
+      },
+      include: {
+        project: {
+          select: { id: true, name: true, projectCode: true },
+        },
+      },
+    });
+
+    if (!materialRequest) {
+      return res.status(404).json({ message: 'Material request not found' });
+    }
+
+    // Get Vendor
+    const vendor = await prisma.vendor.findFirst({
+      where: {
+        id: vendorId,
+        tenantId,
+      },
+    });
+
+    if (!vendor) {
+      return res.status(404).json({ message: 'Vendor not found' });
+    }
+
+    if (!vendor.email) {
+      return res.status(400).json({ message: 'Vendor email not found' });
+    }
+
+    // Generate vendor portal link (if vendor portal is enabled)
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const quoteLink = `${baseUrl}/vendor/quote/${mrId}?vendorId=${vendorId}`;
+
+    // Send email
+    try {
+      const emailResult = await sendMaterialRequestToVendor({
+        materialRequest,
+        vendor,
+        quoteLink,
+      });
+
+      // Audit log
+      await createAuditLog({
+        tenantId,
+        userId: req.user.userId,
+        action: 'MR_SENT_TO_VENDOR',
+        entityType: 'MaterialRequest',
+        entityId: mrId,
+        newData: {
+          vendorId,
+          vendorEmail: vendor.email,
+          emailMessageId: emailResult.messageId,
+        },
+      });
+
+      res.json({
+        success: true,
+        message: 'Material request sent to vendor successfully',
+        emailResult,
+      });
+    } catch (emailError) {
+      console.error('Email sending error:', emailError);
+      res.status(500).json({
+        message: 'Failed to send email',
+        error: emailError.message,
+      });
+    }
+  } catch (error) {
+    console.error('Send MR to vendor error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -536,8 +636,11 @@ const createPurchaseOrder = async (req, res) => {
       return res.status(401).json({ message: 'User authentication required' });
     }
 
+    // Use req.user.userId as fallback for createdBy if not provided
+    const finalCreatedBy = createdBy || req.user.userId;
+
     // Validation
-    if (!vendorId || !createdBy) {
+    if (!vendorId || !finalCreatedBy) {
       return res.status(400).json({
         message: 'vendorId and createdBy are required',
       });
@@ -623,7 +726,7 @@ const createPurchaseOrder = async (req, res) => {
         materialRequestId: materialRequestId || null,
         projectId: projectId || null,
         subGroupId: subGroupId || null,
-        createdBy,
+        createdBy: finalCreatedBy,
         status: 'DRAFT',
         totalAmount,
         deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
@@ -996,7 +1099,7 @@ const createGRN = async (req, res) => {
       return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
-    if (!req.user || !req.user.userId) {
+    if (!req.user || !req.user?.userId) {
       return res.status(401).json({ message: 'User authentication required' });
     }
 
@@ -1019,11 +1122,7 @@ const createGRN = async (req, res) => {
       },
       include: {
         poLines: true,
-        grns: {
-          include: {
-            items: true,
-          },
-        },
+        grns: true,
       },
     });
 
@@ -1088,7 +1187,7 @@ const createGRN = async (req, res) => {
           // Create new ad-hoc inventory item
           const itemCode = `ADHOC-${Date.now()}-${Math.random()
             .toString(36)
-            .substr(2, 9)}`;
+            .substring(2, 11)}`;
           inventoryItem = await prisma.inventoryItem.create({
             data: {
               tenantId,
@@ -1188,7 +1287,7 @@ const createGRN = async (req, res) => {
     // Audit log
     await createAuditLog({
       tenantId,
-      userId: req.user.userId,
+      userId: req.user?.userId,
       action: 'GRN_CREATED',
       entityType: 'GRN',
       entityId: grn.id,
@@ -1271,6 +1370,8 @@ const getGRNs = async (req, res) => {
           select: {
             id: true,
             poNumber: true,
+            status: true,
+            totalAmount: true,
             vendor: {
               select: { id: true, name: true },
             },
@@ -1294,6 +1395,7 @@ module.exports = {
   createMaterialRequest,
   getMaterialRequests,
   getMaterialRequestById,
+  sendMRToVendor,
 
   // Vendor
   createVendor,

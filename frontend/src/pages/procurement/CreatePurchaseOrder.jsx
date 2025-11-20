@@ -26,13 +26,14 @@ const CreatePurchaseOrder = () => {
 
   const mrId = searchParams.get('mrId');
   const vendorQuoteId = searchParams.get('vendorQuoteId');
+  const vendorIdFromUrl = searchParams.get('vendorId');
 
   const [formData, setFormData] = useState({
-    vendorId: '',
+    vendorId: vendorIdFromUrl || '',
     materialRequestId: mrId || '',
     projectId: '',
     subGroupId: '',
-    createdBy: currentUser?.userId || '',
+    createdBy: currentUser?.id || '',
     deliveryDate: '',
   });
 
@@ -55,6 +56,26 @@ const CreatePurchaseOrder = () => {
       dispatch(fetchMaterialRequestById(mrId));
     }
   }, [dispatch, mrId]);
+
+  // Set vendorId from URL params if available
+  useEffect(() => {
+    if (vendorIdFromUrl) {
+      setFormData((prev) => ({
+        ...prev,
+        vendorId: vendorIdFromUrl,
+      }));
+    }
+  }, [vendorIdFromUrl]);
+
+  // Update createdBy when user is loaded
+  useEffect(() => {
+    if (currentUser?.id) {
+      setFormData((prev) => ({
+        ...prev,
+        createdBy: currentUser.id,
+      }));
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     if (materialRequest) {
@@ -125,11 +146,26 @@ const CreatePurchaseOrder = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validation
+    if (!formData.vendorId) {
+      alert('Please select a vendor');
+      return;
+    }
+    
+    // Use currentUser.id if createdBy is not set
+    const finalCreatedBy = formData.createdBy || currentUser?.id;
+    if (!finalCreatedBy) {
+      alert('User information is missing. Please refresh the page.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const payload = {
         ...formData,
+        createdBy: finalCreatedBy,
         projectId: formData.projectId || null,
         subGroupId: formData.subGroupId || null,
         deliveryDate: formData.deliveryDate || null,
