@@ -32,6 +32,7 @@ app.use('/api/quotations', require('./routes/quotationRoutes'));
 app.use('/api/projects', require('./routes/projectRoutes'));
 app.use('/api/procurement', require('./routes/procurementRoutes'));
 app.use('/api/inventory', require('./routes/inventoryRoutes'));
+app.use('/api/production', require('./routes/productionRoutes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -42,6 +42,9 @@ import CreateItem from './pages/inventory/CreateItem';
 import MaterialIssue from './pages/inventory/MaterialIssue';
 import WastageReport from './pages/inventory/WastageReport';
 import StockLedger from './pages/inventory/StockLedger';
+import ProductionBoard from './pages/production/ProductionBoard';
+import JobDetail from './pages/production/JobDetail';
+import CreateJob from './pages/production/CreateJob';
 import RoleBasedRoute from './components/RoleBasedRoute';
 import './App.css';
 
@@ -430,6 +433,38 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <StockLedger />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Production Routes */}
+            <Route
+              path="/production/board"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ProductionBoard />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/production/jobs/create"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <CreateJob />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/production/jobs/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <JobDetail />
                   </Layout>
                 </ProtectedRoute>
               }

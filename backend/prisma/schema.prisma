@@ -36,6 +36,7 @@ model Tenant {
   grns                  GRN[]
   materialIssues        MaterialIssue[]
   wastageRecords        WastageRecord[]
+  productionJobs        ProductionJob[]
 }
 
 model User {
@@ -193,33 +194,45 @@ model SubGroup {
 
 model ProductionJob {
   id                  String               @id @default(cuid())
+  tenantId            String
   projectId           String
   subGroupId          String
   jobCardNumber       String               @unique
   stage               String
-  status              String
-  assignedTo          String?
+  stageIndex          Int?
+  status              String // NOT_STARTED | IN_PROGRESS | COMPLETED | REWORK | CANCELLED
   plannedHours        Float?
-  actualHours         Float?
+  actualHours         Float?               @default(0)
+  plannedQty          Float?
+  actualQty           Float?               @default(0)
   materialConsumption Json?
+  assignedTo          String?
+  createdBy           String
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   project             Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
   subGroup            SubGroup             @relation(fields: [subGroupId], references: [id], onDelete: Cascade)
   productionStageLogs ProductionStageLog[]
   materialIssues      MaterialIssue[]
+  labourLogs          LabourLog[]
+  qcRecords           QCRecord[]
+  tenant              Tenant               @relation(fields: [tenantId], references: [id])
 }
 
 model ProductionStageLog {
   id              String        @id @default(cuid())
   productionJobId String
+  tenantId        String
   stage           String
   startedAt       DateTime?
   completedAt     DateTime?
-  labourUsers     Json?
+  performedBy     String?
+  hoursLogged     Float?
   outputQty       Float?
-  qcStatus        String?
-  remarks         String?
+  notes           String?
+  photos          Json?
+  qcStatus        String? // PASS | FAIL | NA
+  createdAt       DateTime      @default(now())
   productionJob   ProductionJob @relation(fields: [productionJobId], references: [id], onDelete: Cascade)
 }
 
@@ -249,8 +262,8 @@ model StockTransaction {
   id            String        @id @default(cuid())
   tenantId      String
   itemId        String
-  type          String        // IN | OUT | ADJUSTMENT | TRANSFER
-  referenceType String        // GRN | ISSUE | RETURN | ADJUST | PO | DN | RESERVE
+  type          String // IN | OUT | ADJUSTMENT | TRANSFER
+  referenceType String // GRN | ISSUE | RETURN | ADJUST | PO | DN | RESERVE
   referenceId   String?
   qty           Float
   rate          Float?
@@ -270,23 +283,49 @@ model MaterialIssue {
   subGroupId    String?
   issuedBy      String
   issuedAt      DateTime      @default(now())
-  items         Json          // [{ itemId, qty, uom, wastage, remarks }]
+  items         Json // [{ itemId, qty, uom, wastage, remarks }]
   createdAt     DateTime      @default(now())
   tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   productionJob ProductionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
 }
 
+model LabourLog {
+  id              String        @id @default(cuid())
+  productionJobId String
+  employeeId      String
+  tenantId        String
+  date            DateTime
+  hours           Float
+  overtime        Float?
+  remarks         String?
+  createdAt       DateTime      @default(now())
+  productionJob   ProductionJob @relation(fields: [productionJobId], references: [id], onDelete: Cascade)
+}
+
+model QCRecord {
+  id              String        @id @default(cuid())
+  productionJobId String
+  inspectorId     String
+  tenantId        String
+  stage           String
+  qcStatus        String // PASS | FAIL
+  defects         Json? // [{desc, photoDocId}]
+  remarks         String?
+  createdAt       DateTime      @default(now())
+  productionJob   ProductionJob @relation(fields: [productionJobId], references: [id], onDelete: Cascade)
+}
+
 model WastageRecord {
-  id            String        @id @default(cuid())
-  tenantId      String
-  itemId        String
-  jobId         String?
-  qty           Float
-  reason        String?
-  recordedBy    String
-  recordedAt    DateTime      @default(now())
-  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  item          InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  id         String        @id @default(cuid())
+  tenantId   String
+  itemId     String
+  jobId      String?
+  qty        Float
+  reason     String?
+  recordedBy String
+  recordedAt DateTime      @default(now())
+  tenant     Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  item       InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
 model PurchaseOrder {
@@ -442,39 +481,39 @@ model PayrollRecord {
 }
 
 model MaterialRequest {
-  id            String           @id @default(cuid())
-  tenantId      String
-  requestNumber String           @unique
-  projectId     String?
-  subGroupId    String?
-  requestedBy   String
-  requestedDate DateTime         @default(now())
-  status        String           // REQUESTED | QUOTED | PO_CREATED | CANCELLED
-  notes         String?
-  items         Json             // [{ itemName, itemId?, qty, unit, systemItem }]
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  project       Project?         @relation(fields: [projectId], references: [id])
-  subGroup      SubGroup?        @relation(fields: [subGroupId], references: [id])
-  vendorQuotes  VendorQuote[]
+  id             String          @id @default(cuid())
+  tenantId       String
+  requestNumber  String          @unique
+  projectId      String?
+  subGroupId     String?
+  requestedBy    String
+  requestedDate  DateTime        @default(now())
+  status         String // REQUESTED | QUOTED | PO_CREATED | CANCELLED
+  notes          String?
+  items          Json // [{ itemName, itemId?, qty, unit, systemItem }]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project        Project?        @relation(fields: [projectId], references: [id])
+  subGroup       SubGroup?       @relation(fields: [subGroupId], references: [id])
+  vendorQuotes   VendorQuote[]
   purchaseOrders PurchaseOrder[]
 }
 
 model Vendor {
-  id            String           @id @default(cuid())
-  tenantId      String
-  name          String
-  contactPerson String?
-  email         String?
-  phone         String?
-  address       String?
-  bankDetails   Json?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  vendorQuotes  VendorQuote[]
-  purchaseOrders PurchaseOrder[]
+  id                    String                 @id @default(cuid())
+  tenantId              String
+  name                  String
+  contactPerson         String?
+  email                 String?
+  phone                 String?
+  address               String?
+  bankDetails           Json?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  tenant                Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  vendorQuotes          VendorQuote[]
+  purchaseOrders        PurchaseOrder[]
   subcontractWorkOrders SubcontractWorkOrder[]
 }
 
@@ -485,9 +524,9 @@ model VendorQuote {
   vendorId          String
   quoteNumber       String
   quotedBy          String?
-  lines             Json            // [{ description, itemId, qty, unitRate, leadTimeDays }]
+  lines             Json // [{ description, itemId, qty, unitRate, leadTimeDays }]
   totalAmount       Float
-  status            String          // SUBMITTED | EXPIRED | REJECTED
+  status            String // SUBMITTED | EXPIRED | REJECTED
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
   tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)

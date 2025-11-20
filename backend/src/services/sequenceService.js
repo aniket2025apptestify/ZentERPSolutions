@@ -313,9 +313,66 @@ const generateGRNNumber = async (tenantId) => {
   }
 };
 
+/**
+ * Generate next Job Card number for a tenant
+ * Format: {TENANT_CODE}-JC-{YYYYMMDD}-{NNNN}
+ * @param {String} tenantId - Tenant ID
+ * @returns {Promise<String>} Generated job card number
+ */
+const generateJobCardNumber = async (tenantId) => {
+  try {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { code: true },
+    });
+
+    if (!tenant) {
+      throw new Error('Tenant not found');
+    }
+
+    const tenantCode = tenant.code.toUpperCase();
+    const today = new Date();
+    const dateStr = today.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+    const prefix = `${tenantCode}-JC-${dateStr}-`;
+
+    const lastJob = await prisma.productionJob.findFirst({
+      where: {
+        tenantId: tenantId,
+        jobCardNumber: {
+          startsWith: prefix,
+        },
+      },
+      orderBy: {
+        jobCardNumber: 'desc',
+      },
+      select: {
+        jobCardNumber: true,
+      },
+    });
+
+    let counter = 1;
+    if (lastJob) {
+      const lastCounter = parseInt(
+        lastJob.jobCardNumber.slice(prefix.length),
+        10
+      );
+      if (!isNaN(lastCounter)) {
+        counter = lastCounter + 1;
+      }
+    }
+
+    const counterStr = counter.toString().padStart(4, '0');
+    return `${prefix}${counterStr}`;
+  } catch (error) {
+    console.error('Error generating job card number:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   generateQuotationNumber,
   generateProjectCode,
+  generateJobCardNumber,
   generateMRNumber,
   generatePONumber,
   generateGRNNumber,
