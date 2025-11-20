@@ -7,6 +7,11 @@ import clientsReducer from './slices/clientsSlice';
 import documentsReducer from './slices/documentsSlice';
 import quotationsReducer from './slices/quotationsSlice';
 import projectsReducer from './slices/projectsSlice';
+import materialRequestsReducer from './slices/materialRequestsSlice';
+import vendorsReducer from './slices/vendorsSlice';
+import vendorQuotesReducer from './slices/vendorQuotesSlice';
+import purchaseOrdersReducer from './slices/purchaseOrdersSlice';
+import grnReducer from './slices/grnSlice';
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +23,11 @@ export const store = configureStore({
     documents: documentsReducer,
     quotations: quotationsReducer,
     projects: projectsReducer,
+    materialRequests: materialRequestsReducer,
+    vendors: vendorsReducer,
+    vendorQuotes: vendorQuotesReducer,
+    purchaseOrders: purchaseOrdersReducer,
+    grn: grnReducer,
   },
 });
 

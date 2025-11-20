@@ -22,6 +22,14 @@ import NewQuotation from './pages/NewQuotation';
 import ProjectList from './pages/ProjectList';
 import ProjectDetail from './pages/ProjectDetail';
 import NewProject from './pages/NewProject';
+import MaterialRequestList from './pages/procurement/MaterialRequestList';
+import CreateMaterialRequest from './pages/procurement/CreateMaterialRequest';
+import MaterialRequestDetail from './pages/procurement/MaterialRequestDetail';
+import VendorList from './pages/procurement/VendorList';
+import PurchaseOrderList from './pages/procurement/PurchaseOrderList';
+import CreatePurchaseOrder from './pages/procurement/CreatePurchaseOrder';
+import PurchaseOrderDetail from './pages/procurement/PurchaseOrderDetail';
+import CreateGRN from './pages/procurement/CreateGRN';
 import RoleBasedRoute from './components/RoleBasedRoute';
 import './App.css';
 
@@ -211,6 +219,88 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <ProjectDetail />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Procurement Routes */}
+            <Route
+              path="/procurement/material-requests"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <MaterialRequestList />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/procurement/material-requests/create"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <CreateMaterialRequest />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/procurement/material-requests/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <MaterialRequestDetail />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/procurement/vendors"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <VendorList />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/procurement/purchase-orders"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <PurchaseOrderList />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/procurement/purchase-orders/create"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <CreatePurchaseOrder />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/procurement/purchase-orders/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <PurchaseOrderDetail />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/procurement/grn/create"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <CreateGRN />
                   </Layout>
                 </ProtectedRoute>
               }

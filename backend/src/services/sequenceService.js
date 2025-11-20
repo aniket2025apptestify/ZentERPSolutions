@@ -129,8 +129,195 @@ const generateProjectCode = async (tenantId) => {
   }
 };
 
+/**
+ * Generate next Material Request number for a tenant
+ * Format: MR-{TENANT_CODE}-{YYYYMMDD}-{NNNN}
+ * @param {String} tenantId - Tenant ID
+ * @returns {Promise<String>} Generated MR number
+ */
+const generateMRNumber = async (tenantId) => {
+  try {
+    // Validate prisma client is available
+    if (!prisma) {
+      throw new Error('Prisma client is not initialized');
+    }
+
+    // Validate materialRequest model is available
+    if (!prisma.materialRequest) {
+      throw new Error('Prisma materialRequest model is not available. Please run: npx prisma generate');
+    }
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { code: true },
+    });
+
+    if (!tenant) {
+      throw new Error('Tenant not found');
+    }
+
+    const tenantCode = tenant.code.toUpperCase();
+    const today = new Date();
+    const dateStr = today.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+    const prefix = `MR-${tenantCode}-${dateStr}-`;
+
+    const lastMR = await prisma.materialRequest.findFirst({
+      where: {
+        tenantId: tenantId,
+        requestNumber: {
+          startsWith: prefix,
+        },
+      },
+      orderBy: {
+        requestNumber: 'desc',
+      },
+      select: {
+        requestNumber: true,
+      },
+    });
+
+    let counter = 1;
+    if (lastMR) {
+      const lastCounter = parseInt(
+        lastMR.requestNumber.slice(prefix.length),
+        10
+      );
+      if (!isNaN(lastCounter)) {
+        counter = lastCounter + 1;
+      }
+    }
+
+    const counterStr = counter.toString().padStart(4, '0');
+    return `${prefix}${counterStr}`;
+  } catch (error) {
+    console.error('Error generating MR number:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      prismaAvailable: !!prisma,
+      materialRequestAvailable: !!(prisma && prisma.materialRequest),
+    });
+    throw error;
+  }
+};
+
+/**
+ * Generate next Purchase Order number for a tenant
+ * Format: PO-{TENANT_CODE}-{YYYYMMDD}-{NNNN}
+ * @param {String} tenantId - Tenant ID
+ * @returns {Promise<String>} Generated PO number
+ */
+const generatePONumber = async (tenantId) => {
+  try {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { code: true },
+    });
+
+    if (!tenant) {
+      throw new Error('Tenant not found');
+    }
+
+    const tenantCode = tenant.code.toUpperCase();
+    const today = new Date();
+    const dateStr = today.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+    const prefix = `PO-${tenantCode}-${dateStr}-`;
+
+    const lastPO = await prisma.purchaseOrder.findFirst({
+      where: {
+        tenantId: tenantId,
+        poNumber: {
+          startsWith: prefix,
+        },
+      },
+      orderBy: {
+        poNumber: 'desc',
+      },
+      select: {
+        poNumber: true,
+      },
+    });
+
+    let counter = 1;
+    if (lastPO) {
+      const lastCounter = parseInt(
+        lastPO.poNumber.slice(prefix.length),
+        10
+      );
+      if (!isNaN(lastCounter)) {
+        counter = lastCounter + 1;
+      }
+    }
+
+    const counterStr = counter.toString().padStart(4, '0');
+    return `${prefix}${counterStr}`;
+  } catch (error) {
+    console.error('Error generating PO number:', error);
+    throw error;
+  }
+};
+
+/**
+ * Generate next GRN number for a tenant
+ * Format: GRN-{TENANT_CODE}-{YYYYMMDD}-{NNNN}
+ * @param {String} tenantId - Tenant ID
+ * @returns {Promise<String>} Generated GRN number
+ */
+const generateGRNNumber = async (tenantId) => {
+  try {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { code: true },
+    });
+
+    if (!tenant) {
+      throw new Error('Tenant not found');
+    }
+
+    const tenantCode = tenant.code.toUpperCase();
+    const today = new Date();
+    const dateStr = today.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+    const prefix = `GRN-${tenantCode}-${dateStr}-`;
+
+    const lastGRN = await prisma.gRN.findFirst({
+      where: {
+        tenantId: tenantId,
+        grnNumber: {
+          startsWith: prefix,
+        },
+      },
+      orderBy: {
+        grnNumber: 'desc',
+      },
+      select: {
+        grnNumber: true,
+      },
+    });
+
+    let counter = 1;
+    if (lastGRN) {
+      const lastCounter = parseInt(
+        lastGRN.grnNumber.slice(prefix.length),
+        10
+      );
+      if (!isNaN(lastCounter)) {
+        counter = lastCounter + 1;
+      }
+    }
+
+    const counterStr = counter.toString().padStart(4, '0');
+    return `${prefix}${counterStr}`;
+  } catch (error) {
+    console.error('Error generating GRN number:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   generateQuotationNumber,
   generateProjectCode,
+  generateMRNumber,
+  generatePONumber,
+  generateGRNNumber,
 };
 
