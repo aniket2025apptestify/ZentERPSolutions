@@ -5,6 +5,7 @@ const {
   generateProjectCode,
 } = require('../services/sequenceService');
 const { sendQuotationEmail } = require('../services/emailService');
+const { generateQuotationPDF } = require('../services/pdfService');
 const { Role } = require('@prisma/client');
 
 /**
@@ -674,6 +675,7 @@ const sendQuotation = async (req, res) => {
           },
           message: emailMessage || 'Please find attached our quotation for your consideration.',
           pdfUrl: null, // TODO: Generate PDF and attach
+          tenantId: req.tenantId,
         });
       } catch (error) {
         console.error('Failed to send email:', error);
@@ -982,6 +984,64 @@ const convertQuotation = async (req, res) => {
   }
 };
 
+/**
+ * Generate Quotation PDF
+ * GET /api/quotations/:id/pdf
+ */
+const generateQuotationPDFEndpoint = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.tenantId;
+
+    const quotation = await prisma.quotation.findFirst({
+      where: {
+        id,
+        tenantId,
+      },
+      include: {
+        client: {
+          select: {
+            id: true,
+            name: true,
+            companyName: true,
+            email: true,
+            phone: true,
+            address: true,
+            vatNumber: true,
+          },
+        },
+        quotationLines: true,
+      },
+    });
+
+    if (!quotation) {
+      return res.status(404).json({ message: 'Quotation not found' });
+    }
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        logoUrl: true,
+        vatNumber: true,
+        settings: true,
+      },
+    });
+
+    const pdfBuffer = await generateQuotationPDF(quotation, tenant || {});
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="Quotation-${quotation.quotationNumber}.pdf"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Generate Quotation PDF error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 module.exports = {
   createQuotation,
   getQuotations,
@@ -991,5 +1051,6 @@ module.exports = {
   approveQuotation,
   rejectQuotation,
   convertQuotation,
+  generateQuotationPDFEndpoint,
 };
 

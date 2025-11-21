@@ -24,6 +24,7 @@ const tenantRoutes = require('./routes/tenantRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/tenants', tenantRoutes);
+app.use('/api/tenant', require('./routes/tenantSettingsRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/clients', require('./routes/clientRoutes'));
 app.use('/api/inquiries', require('./routes/inquiryRoutes'));

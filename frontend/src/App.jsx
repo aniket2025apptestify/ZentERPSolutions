@@ -28,6 +28,7 @@ import MaterialRequestDetail from './pages/procurement/MaterialRequestDetail';
 import EnterVendorQuote from './pages/procurement/EnterVendorQuote';
 import CompareVendorQuotes from './pages/procurement/CompareVendorQuotes';
 import VendorList from './pages/procurement/VendorList';
+import VendorDetail from './pages/procurement/VendorDetail';
 import PurchaseOrderList from './pages/procurement/PurchaseOrderList';
 import CreatePurchaseOrder from './pages/procurement/CreatePurchaseOrder';
 import PurchaseOrderDetail from './pages/procurement/PurchaseOrderDetail';
@@ -48,7 +49,9 @@ import CreateJob from './pages/production/CreateJob';
 import QCDashboard from './pages/qc/QCDashboard';
 import QCDetail from './pages/qc/QCDetail';
 import ReworkBoard from './pages/rework/ReworkBoard';
+import ReworkDetail from './pages/rework/ReworkDetail';
 import ReturnManagement from './pages/returns/ReturnManagement';
+import CompanySettings from './pages/settings/CompanySettings';
 import RoleBasedRoute from './components/RoleBasedRoute';
 import './App.css';
 
@@ -111,7 +114,19 @@ function App() {
               }
             />
 
-            {/* User Management Routes (DIRECTOR or IT_ADMIN only) */}
+            {/* Settings Routes (DIRECTOR or PROJECT_MANAGER only) */}
+            <Route
+              path="/settings/company"
+              element={
+                <ProtectedRoute>
+                  <RoleBasedRoute allowedRoles={['DIRECTOR', 'PROJECT_MANAGER']}>
+                    <Layout>
+                      <CompanySettings />
+                    </Layout>
+                  </RoleBasedRoute>
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/settings/users"
               element={
@@ -320,6 +335,16 @@ function App() {
               }
             />
             <Route
+              path="/procurement/vendors/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <VendorDetail />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/procurement/purchase-orders"
               element={
                 <ProtectedRoute>
@@ -503,6 +528,16 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <ReworkBoard />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/rework/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ReworkDetail />
                   </Layout>
                 </ProtectedRoute>
               }

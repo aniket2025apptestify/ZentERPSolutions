@@ -30,6 +30,7 @@ router.post(
 );
 router.post('/:id/reject', quotationController.rejectQuotation);
 router.post('/:id/convert', quotationController.convertQuotation);
+router.get('/:id/pdf', quotationController.generateQuotationPDFEndpoint);
 
 module.exports = router;
 

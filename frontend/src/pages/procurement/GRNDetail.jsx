@@ -49,6 +49,55 @@ const GRNDetail = () => {
             <h1 className="text-3xl font-bold text-gray-900">{grn.grnNumber}</h1>
             <p className="mt-2 text-sm text-gray-600">Goods Receipt Note Details</p>
           </div>
+          <button
+            onClick={() => {
+              const token = localStorage.getItem('token');
+              const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+              const url = `${apiUrl}/api/procurement/grn/${id}/pdf`;
+              fetch(url, {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              })
+                  .then((res) => {
+                    if (!res.ok) {
+                      return res.text().then(text => {
+                        throw new Error(text || 'Failed to generate PDF');
+                      });
+                    }
+                    const contentType = res.headers.get('content-type');
+                    if (contentType && !contentType.includes('application/pdf')) {
+                      return res.text().then(text => {
+                        throw new Error('Response is not a PDF');
+                      });
+                    }
+                    return res.blob();
+                  })
+                  .then((blob) => {
+                    // Validate blob type
+                    if (!blob.type.includes('pdf') && blob.size > 0) {
+                      const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+                      const blobUrl = window.URL.createObjectURL(pdfBlob);
+                      window.open(blobUrl, '_blank');
+                    } else if (blob.type.includes('pdf')) {
+                      const blobUrl = window.URL.createObjectURL(blob);
+                      window.open(blobUrl, '_blank');
+                    } else {
+                      throw new Error('Invalid PDF file');
+                    }
+                  })
+                .catch((err) => {
+                  console.error('Failed to generate PDF:', err);
+                  alert('Failed to generate PDF. Please try again.');
+                });
+            }}
+            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            View/Print PDF
+          </button>
         </div>
       </div>
 

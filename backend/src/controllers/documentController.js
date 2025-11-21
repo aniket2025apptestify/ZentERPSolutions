@@ -3,6 +3,11 @@ const path = require('path');
 const fs = require('fs').promises;
 const prisma = require('../config/prisma');
 const { createAuditLog } = require('../services/auditLogService');
+const {
+  initializeCloudinary,
+  uploadToCloudinary,
+  deleteFromCloudinary,
+} = require('../services/cloudinaryService');
 
 // Configure multer storage
 const storage = multer.diskStorage({
@@ -78,8 +83,39 @@ const uploadDocument = async (req, res) => {
       }
     }
 
-    // Construct file URL (in production, this would be a CDN or storage service URL)
-    const fileUrl = `/uploads/${req.file.filename}`;
+    // Get tenant settings to check if Cloudinary is enabled
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true },
+    });
+
+    const settings = tenant?.settings || {};
+    const cloudinaryConfig = settings.cloudinary || {};
+    let fileUrl = `/uploads/${req.file.filename}`;
+
+    // Upload to Cloudinary if enabled and configured
+    if (cloudinaryConfig.enabled && cloudinaryConfig.cloudName && cloudinaryConfig.apiKey && cloudinaryConfig.apiSecret) {
+      try {
+        initializeCloudinary(
+          cloudinaryConfig.cloudName,
+          cloudinaryConfig.apiKey,
+          cloudinaryConfig.apiSecret
+        );
+
+        const uploadResult = await uploadToCloudinary(req.file.path, {
+          folder: `zent-erp/${tenantId}/documents`,
+          resource_type: 'auto',
+        });
+
+        fileUrl = uploadResult.url;
+
+        // Delete local file after successful Cloudinary upload
+        await fs.unlink(req.file.path).catch(() => {});
+      } catch (error) {
+        console.error('Cloudinary upload failed, using local storage:', error);
+        // Continue with local storage if Cloudinary fails
+      }
+    }
 
     // Create document record
     const document = await prisma.document.create({

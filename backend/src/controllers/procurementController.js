@@ -6,6 +6,11 @@ const {
   generateGRNNumber,
 } = require('../services/sequenceService');
 const { sendMaterialRequestToVendor } = require('../services/emailService');
+const {
+  generatePurchaseOrderPDF,
+  generateMaterialRequestPDF,
+  generateGRNPDF,
+} = require('../services/pdfService');
 const { Role } = require('@prisma/client');
 
 // ==================== MATERIAL REQUEST ====================
@@ -297,6 +302,7 @@ const sendMRToVendor = async (req, res) => {
         materialRequest,
         vendor,
         quoteLink,
+        tenantId: req.tenantId,
       });
 
       // Audit log
@@ -339,8 +345,30 @@ const sendMRToVendor = async (req, res) => {
  */
 const createVendor = async (req, res) => {
   try {
-    const { name, contactPerson, email, phone, address, bankDetails } =
-      req.body;
+    const {
+      name,
+      companyName,
+      contactPerson,
+      email,
+      email2,
+      phone,
+      phone2,
+      address,
+      city,
+      state,
+      country,
+      zipCode,
+      vatNumber,
+      gstin,
+      panNumber,
+      taxId,
+      website,
+      registrationNumber,
+      bankDetails,
+      paymentTerms,
+      creditLimit,
+      notes,
+    } = req.body;
     const tenantId = req.tenantId;
 
     if (!tenantId) {
@@ -358,12 +386,28 @@ const createVendor = async (req, res) => {
     const vendor = await prisma.vendor.create({
       data: {
         tenantId,
-        name,
-        contactPerson: contactPerson || null,
-        email: email || null,
-        phone: phone || null,
-        address: address || null,
+        name: name.trim(),
+        companyName: companyName?.trim() || null,
+        contactPerson: contactPerson?.trim() || null,
+        email: email?.trim() || null,
+        email2: email2?.trim() || null,
+        phone: phone?.trim() || null,
+        phone2: phone2?.trim() || null,
+        address: address?.trim() || null,
+        city: city?.trim() || null,
+        state: state?.trim() || null,
+        country: country?.trim() || null,
+        zipCode: zipCode?.trim() || null,
+        vatNumber: vatNumber?.trim() || null,
+        gstin: gstin?.trim() || null,
+        panNumber: panNumber?.trim() || null,
+        taxId: taxId?.trim() || null,
+        website: website?.trim() || null,
+        registrationNumber: registrationNumber?.trim() || null,
         bankDetails: bankDetails || null,
+        paymentTerms: paymentTerms?.trim() || null,
+        creditLimit: creditLimit ? parseFloat(creditLimit) : null,
+        notes: notes?.trim() || null,
       },
     });
 
@@ -449,6 +493,180 @@ const getVendorById = async (req, res) => {
     res.json(vendor);
   } catch (error) {
     console.error('Get vendor error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+/**
+ * Update Vendor
+ * PUT /api/procurement/vendors/:id
+ */
+const updateVendor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      name,
+      companyName,
+      contactPerson,
+      email,
+      email2,
+      phone,
+      phone2,
+      address,
+      city,
+      state,
+      country,
+      zipCode,
+      vatNumber,
+      gstin,
+      panNumber,
+      taxId,
+      website,
+      registrationNumber,
+      bankDetails,
+      paymentTerms,
+      creditLimit,
+      notes,
+    } = req.body;
+    const tenantId = req.tenantId;
+
+    if (!tenantId) {
+      return res.status(400).json({ message: 'Tenant ID is required' });
+    }
+
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ message: 'User authentication required' });
+    }
+
+    // Check if vendor exists
+    const existingVendor = await prisma.vendor.findFirst({
+      where: {
+        id,
+        tenantId,
+      },
+    });
+
+    if (!existingVendor) {
+      return res.status(404).json({ message: 'Vendor not found' });
+    }
+
+    if (!name) {
+      return res.status(400).json({ message: 'Vendor name is required' });
+    }
+
+    const vendor = await prisma.vendor.update({
+      where: { id },
+      data: {
+        name: name.trim(),
+        companyName: companyName?.trim() || null,
+        contactPerson: contactPerson?.trim() || null,
+        email: email?.trim() || null,
+        email2: email2?.trim() || null,
+        phone: phone?.trim() || null,
+        phone2: phone2?.trim() || null,
+        address: address?.trim() || null,
+        city: city?.trim() || null,
+        state: state?.trim() || null,
+        country: country?.trim() || null,
+        zipCode: zipCode?.trim() || null,
+        vatNumber: vatNumber?.trim() || null,
+        gstin: gstin?.trim() || null,
+        panNumber: panNumber?.trim() || null,
+        taxId: taxId?.trim() || null,
+        website: website?.trim() || null,
+        registrationNumber: registrationNumber?.trim() || null,
+        bankDetails: bankDetails || null,
+        paymentTerms: paymentTerms?.trim() || null,
+        creditLimit: creditLimit ? parseFloat(creditLimit) : null,
+        notes: notes?.trim() || null,
+      },
+    });
+
+    // Audit log
+    await createAuditLog({
+      tenantId,
+      userId: req.user.userId,
+      action: 'VENDOR_UPDATE',
+      entityType: 'Vendor',
+      entityId: vendor.id,
+      oldData: existingVendor,
+      newData: vendor,
+    });
+
+    res.json(vendor);
+  } catch (error) {
+    console.error('Update vendor error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+/**
+ * Delete Vendor
+ * DELETE /api/procurement/vendors/:id
+ */
+const deleteVendor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.tenantId;
+
+    if (!tenantId) {
+      return res.status(400).json({ message: 'Tenant ID is required' });
+    }
+
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ message: 'User authentication required' });
+    }
+
+    // Check if vendor exists
+    const existingVendor = await prisma.vendor.findFirst({
+      where: {
+        id,
+        tenantId,
+      },
+      include: {
+        purchaseOrders: {
+          select: { id: true },
+        },
+        vendorQuotes: {
+          select: { id: true },
+        },
+      },
+    });
+
+    if (!existingVendor) {
+      return res.status(404).json({ message: 'Vendor not found' });
+    }
+
+    // Check if vendor has associated records
+    if (existingVendor.purchaseOrders.length > 0) {
+      return res.status(400).json({
+        message: 'Cannot delete vendor with associated purchase orders',
+      });
+    }
+
+    if (existingVendor.vendorQuotes.length > 0) {
+      return res.status(400).json({
+        message: 'Cannot delete vendor with associated vendor quotes',
+      });
+    }
+
+    await prisma.vendor.delete({
+      where: { id },
+    });
+
+    // Audit log
+    await createAuditLog({
+      tenantId,
+      userId: req.user.userId,
+      action: 'VENDOR_DELETE',
+      entityType: 'Vendor',
+      entityId: id,
+      oldData: existingVendor,
+    });
+
+    res.json({ message: 'Vendor deleted successfully' });
+  } catch (error) {
+    console.error('Delete vendor error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -619,6 +837,7 @@ const createPurchaseOrder = async (req, res) => {
   try {
     const {
       vendorId,
+      clientId,
       materialRequestId,
       projectId,
       subGroupId,
@@ -659,7 +878,7 @@ const createPurchaseOrder = async (req, res) => {
       }
     }
 
-    // Validate vendor
+    // Validate vendor (supplier)
     const vendor = await prisma.vendor.findFirst({
       where: {
         id: vendorId,
@@ -668,7 +887,31 @@ const createPurchaseOrder = async (req, res) => {
     });
 
     if (!vendor) {
-      return res.status(404).json({ message: 'Vendor not found' });
+      return res.status(404).json({ message: 'Supplier not found' });
+    }
+
+    // Validate client if provided
+    let finalClientId = clientId;
+    if (clientId) {
+      const client = await prisma.client.findFirst({
+        where: {
+          id: clientId,
+          tenantId,
+        },
+      });
+
+      if (!client) {
+        return res.status(404).json({ message: 'Client not found' });
+      }
+    } else if (projectId) {
+      // If clientId not provided but projectId is, get client from project
+      const project = await prisma.project.findFirst({
+        where: { id: projectId, tenantId },
+        select: { clientId: true },
+      });
+      if (project) {
+        finalClientId = project.clientId;
+      }
     }
 
     // Validate MR if provided
@@ -723,6 +966,7 @@ const createPurchaseOrder = async (req, res) => {
         tenantId,
         poNumber,
         vendorId,
+        clientId: finalClientId || null,
         materialRequestId: materialRequestId || null,
         projectId: projectId || null,
         subGroupId: subGroupId || null,
@@ -743,7 +987,10 @@ const createPurchaseOrder = async (req, res) => {
       },
       include: {
         vendor: {
-          select: { id: true, name: true, email: true },
+          select: { id: true, name: true, email: true, phone: true, address: true },
+        },
+        client: {
+          select: { id: true, name: true, companyName: true, email: true, phone: true, address: true },
         },
         project: {
           select: { id: true, name: true, projectCode: true },
@@ -792,12 +1039,12 @@ const createPurchaseOrder = async (req, res) => {
 
 /**
  * Get Purchase Orders
- * GET /api/procurement/purchase-orders?status=&vendorId=&projectId=
+ * GET /api/procurement/purchase-orders?status=&vendorId=&clientId=&projectId=
  */
 const getPurchaseOrders = async (req, res) => {
   try {
     const tenantId = req.tenantId;
-    const { status, vendorId, projectId, subGroupId } = req.query;
+    const { status, vendorId, clientId, projectId, subGroupId } = req.query;
 
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
@@ -815,6 +1062,10 @@ const getPurchaseOrders = async (req, res) => {
       where.vendorId = vendorId;
     }
 
+    if (clientId) {
+      where.clientId = clientId;
+    }
+
     if (projectId) {
       where.projectId = projectId;
     }
@@ -827,7 +1078,10 @@ const getPurchaseOrders = async (req, res) => {
       where,
       include: {
         vendor: {
-          select: { id: true, name: true, email: true },
+          select: { id: true, name: true, email: true, phone: true, address: true },
+        },
+        client: {
+          select: { id: true, name: true, companyName: true, email: true, phone: true, address: true },
         },
         project: {
           select: { id: true, name: true, projectCode: true },
@@ -836,6 +1090,11 @@ const getPurchaseOrders = async (req, res) => {
           select: { id: true, name: true },
         },
         poLines: true,
+        grns: {
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc',
@@ -864,7 +1123,12 @@ const getPurchaseOrderById = async (req, res) => {
         tenantId,
       },
       include: {
-        vendor: true,
+        vendor: {
+          select: { id: true, name: true, email: true, phone: true, address: true, contactPerson: true },
+        },
+        client: {
+          select: { id: true, name: true, companyName: true, email: true, phone: true, address: true, vatNumber: true },
+        },
         project: {
           select: { id: true, name: true, projectCode: true },
         },
@@ -1418,6 +1682,170 @@ const getGRNs = async (req, res) => {
   }
 };
 
+/**
+ * Generate Purchase Order PDF
+ * GET /api/procurement/purchase-orders/:id/pdf
+ */
+const generatePurchaseOrderPDFEndpoint = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.tenantId;
+
+    const purchaseOrder = await prisma.purchaseOrder.findFirst({
+      where: {
+        id,
+        tenantId,
+      },
+      include: {
+        vendor: true,
+        project: true,
+        subGroup: true,
+        poLines: {
+          include: {
+            item: {
+              select: {
+                id: true,
+                itemName: true,
+                itemCode: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!purchaseOrder) {
+      return res.status(404).json({ message: 'Purchase order not found' });
+    }
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        logoUrl: true,
+        vatNumber: true,
+        settings: true,
+      },
+    });
+
+    const pdfBuffer = await generatePurchaseOrderPDF(purchaseOrder, tenant || {});
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="PO-${purchaseOrder.poNumber}.pdf"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Generate PO PDF error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+/**
+ * Generate Material Request PDF
+ * GET /api/procurement/material-requests/:id/pdf
+ */
+const generateMaterialRequestPDFEndpoint = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.tenantId;
+
+    const materialRequest = await prisma.materialRequest.findFirst({
+      where: {
+        id,
+        tenantId,
+      },
+      include: {
+        project: {
+          select: { id: true, name: true, projectCode: true },
+        },
+        subGroup: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+
+    if (!materialRequest) {
+      return res.status(404).json({ message: 'Material request not found' });
+    }
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        logoUrl: true,
+        vatNumber: true,
+        settings: true,
+      },
+    });
+
+    const pdfBuffer = await generateMaterialRequestPDF(materialRequest, tenant || {});
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="MR-${materialRequest.requestNumber}.pdf"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Generate MR PDF error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+/**
+ * Generate GRN PDF
+ * GET /api/procurement/grn/:id/pdf
+ */
+const generateGRNPDFEndpoint = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.tenantId;
+
+    const grn = await prisma.gRN.findFirst({
+      where: {
+        id,
+        tenantId,
+      },
+      include: {
+        purchaseOrder: {
+          select: {
+            id: true,
+            poNumber: true,
+          },
+        },
+      },
+    });
+
+    if (!grn) {
+      return res.status(404).json({ message: 'GRN not found' });
+    }
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        logoUrl: true,
+        vatNumber: true,
+        settings: true,
+      },
+    });
+
+    const pdfBuffer = await generateGRNPDF(grn, tenant || {});
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="GRN-${grn.grnNumber}.pdf"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Generate GRN PDF error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 module.exports = {
   // Material Request
   createMaterialRequest,
@@ -1429,6 +1857,8 @@ module.exports = {
   createVendor,
   getVendors,
   getVendorById,
+  updateVendor,
+  deleteVendor,
 
   // Vendor Quote
   createVendorQuote,
@@ -1445,5 +1875,10 @@ module.exports = {
   createGRN,
   getGRNById,
   getGRNs,
+
+  // PDF Generation
+  generatePurchaseOrderPDFEndpoint,
+  generateMaterialRequestPDFEndpoint,
+  generateGRNPDFEndpoint,
 };
 

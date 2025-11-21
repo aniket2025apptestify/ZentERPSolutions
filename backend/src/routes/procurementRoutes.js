@@ -35,6 +35,8 @@ router.get(
 router.post('/vendors', procurementController.createVendor);
 router.get('/vendors', procurementController.getVendors);
 router.get('/vendors/:id', procurementController.getVendorById);
+router.put('/vendors/:id', procurementController.updateVendor);
+router.delete('/vendors/:id', procurementController.deleteVendor);
 
 // ==================== VENDOR QUOTE ROUTES ====================
 router.post('/vendor-quotes', procurementController.createVendorQuote);
@@ -59,6 +61,17 @@ router.post(
 router.post('/grn', procurementController.createGRN);
 router.get('/grn', procurementController.getGRNs);
 router.get('/grn/:id', procurementController.getGRNById);
+
+// ==================== PDF GENERATION ROUTES ====================
+router.get(
+  '/purchase-orders/:id/pdf',
+  procurementController.generatePurchaseOrderPDFEndpoint
+);
+router.get(
+  '/material-requests/:id/pdf',
+  procurementController.generateMaterialRequestPDFEndpoint
+);
+router.get('/grn/:id/pdf', procurementController.generateGRNPDFEndpoint);
 
 module.exports = router;
 

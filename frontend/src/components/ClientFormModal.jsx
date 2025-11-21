@@ -10,8 +10,21 @@ const ClientFormModal = ({ client = null, onClose }) => {
     companyName: '',
     email: '',
     phone: '',
+    phone2: '',
     address: '',
+    city: '',
+    state: '',
+    country: '',
+    zipCode: '',
     vatNumber: '',
+    gstin: '',
+    panNumber: '',
+    taxId: '',
+    website: '',
+    registrationNumber: '',
+    paymentTerms: '',
+    creditLimit: '',
+    notes: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
@@ -23,8 +36,21 @@ const ClientFormModal = ({ client = null, onClose }) => {
         companyName: client.companyName || '',
         email: client.email || '',
         phone: client.phone || '',
+        phone2: client.phone2 || '',
         address: client.address || '',
+        city: client.city || '',
+        state: client.state || '',
+        country: client.country || '',
+        zipCode: client.zipCode || '',
         vatNumber: client.vatNumber || '',
+        gstin: client.gstin || '',
+        panNumber: client.panNumber || '',
+        taxId: client.taxId || '',
+        website: client.website || '',
+        registrationNumber: client.registrationNumber || '',
+        paymentTerms: client.paymentTerms || '',
+        creditLimit: client.creditLimit || '',
+        notes: client.notes || '',
       });
     } else {
       setFormData({
@@ -32,8 +58,21 @@ const ClientFormModal = ({ client = null, onClose }) => {
         companyName: '',
         email: '',
         phone: '',
+        phone2: '',
         address: '',
+        city: '',
+        state: '',
+        country: '',
+        zipCode: '',
         vatNumber: '',
+        gstin: '',
+        panNumber: '',
+        taxId: '',
+        website: '',
+        registrationNumber: '',
+        paymentTerms: '',
+        creditLimit: '',
+        notes: '',
       });
     }
     setValidationErrors({});
@@ -133,7 +172,7 @@ const ClientFormModal = ({ client = null, onClose }) => {
         />
 
         {/* Modal panel */}
-        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <div className="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full max-h-[90vh] overflow-y-auto">
           <form onSubmit={handleSubmit}>
             <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
               <div className="sm:flex sm:items-start">
@@ -152,105 +191,300 @@ const ClientFormModal = ({ client = null, onClose }) => {
                     </div>
                   )}
 
-                  <div className="space-y-4">
-                    <div>
-                      <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                        Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        name="name"
-                        id="name"
-                        required
-                        value={formData.name}
-                        onChange={handleChange}
-                        className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
-                          validationErrors.name ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                      />
-                      {validationErrors.name && (
-                        <p className="mt-1 text-sm text-red-600">{validationErrors.name}</p>
-                      )}
+                  <div className="space-y-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div>
+                        <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-2">
+                          Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="name"
+                          id="name"
+                          required
+                          value={formData.name}
+                          onChange={handleChange}
+                          className={`w-full px-4 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
+                            validationErrors.name ? 'border-red-300' : 'border-gray-300'
+                          }`}
+                        />
+                        {validationErrors.name && (
+                          <p className="mt-1 text-sm text-red-600">{validationErrors.name}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label htmlFor="companyName" className="block text-sm font-semibold text-gray-700 mb-2">
+                          Company Name
+                        </label>
+                        <input
+                          type="text"
+                          name="companyName"
+                          id="companyName"
+                          value={formData.companyName}
+                          onChange={handleChange}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
+                          Email
+                        </label>
+                        <input
+                          type="email"
+                          name="email"
+                          id="email"
+                          value={formData.email}
+                          onChange={handleChange}
+                          className={`w-full px-4 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
+                            validationErrors.email ? 'border-red-300' : 'border-gray-300'
+                          }`}
+                        />
+                        {validationErrors.email && (
+                          <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label htmlFor="phone" className="block text-sm font-semibold text-gray-700 mb-2">
+                          Phone
+                        </label>
+                        <input
+                          type="text"
+                          name="phone"
+                          id="phone"
+                          value={formData.phone}
+                          onChange={handleChange}
+                          placeholder="+91 9999999999"
+                          className={`w-full px-4 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
+                            validationErrors.phone ? 'border-red-300' : 'border-gray-300'
+                          }`}
+                        />
+                        {validationErrors.phone && (
+                          <p className="mt-1 text-sm text-red-600">{validationErrors.phone}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label htmlFor="phone2" className="block text-sm font-semibold text-gray-700 mb-2">
+                          Alternative Phone
+                        </label>
+                        <input
+                          type="text"
+                          name="phone2"
+                          id="phone2"
+                          value={formData.phone2}
+                          onChange={handleChange}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="website" className="block text-sm font-semibold text-gray-700 mb-2">
+                          Website
+                        </label>
+                        <input
+                          type="url"
+                          name="website"
+                          id="website"
+                          value={formData.website}
+                          onChange={handleChange}
+                          placeholder="https://example.com"
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        />
+                      </div>
                     </div>
 
                     <div>
-                      <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">
-                        Company Name
-                      </label>
-                      <input
-                        type="text"
-                        name="companyName"
-                        id="companyName"
-                        value={formData.companyName}
-                        onChange={handleChange}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        name="email"
-                        id="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
-                          validationErrors.email ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                      />
-                      {validationErrors.email && (
-                        <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                        Phone
-                      </label>
-                      <input
-                        type="text"
-                        name="phone"
-                        id="phone"
-                        value={formData.phone}
-                        onChange={handleChange}
-                        placeholder="+91 9999999999"
-                        className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
-                          validationErrors.phone ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                      />
-                      {validationErrors.phone && (
-                        <p className="mt-1 text-sm text-red-600">{validationErrors.phone}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label htmlFor="address" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="address" className="block text-sm font-semibold text-gray-700 mb-2">
                         Address
                       </label>
                       <textarea
                         name="address"
                         id="address"
-                        rows={3}
+                        rows={2}
                         value={formData.address}
                         onChange={handleChange}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                      <div>
+                        <label htmlFor="city" className="block text-sm font-semibold text-gray-700 mb-2">
+                          City
+                        </label>
+                        <input
+                          type="text"
+                          name="city"
+                          id="city"
+                          value={formData.city}
+                          onChange={handleChange}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="state" className="block text-sm font-semibold text-gray-700 mb-2">
+                          State
+                        </label>
+                        <input
+                          type="text"
+                          name="state"
+                          id="state"
+                          value={formData.state}
+                          onChange={handleChange}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="country" className="block text-sm font-semibold text-gray-700 mb-2">
+                          Country
+                        </label>
+                        <input
+                          type="text"
+                          name="country"
+                          id="country"
+                          value={formData.country}
+                          onChange={handleChange}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="zipCode" className="block text-sm font-semibold text-gray-700 mb-2">
+                          Zip Code
+                        </label>
+                        <input
+                          type="text"
+                          name="zipCode"
+                          id="zipCode"
+                          value={formData.zipCode}
+                          onChange={handleChange}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                      <div>
+                        <label htmlFor="vatNumber" className="block text-sm font-semibold text-gray-700 mb-2">
+                          VAT Number
+                        </label>
+                        <input
+                          type="text"
+                          name="vatNumber"
+                          id="vatNumber"
+                          value={formData.vatNumber}
+                          onChange={handleChange}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="gstin" className="block text-sm font-semibold text-gray-700 mb-2">
+                          GSTIN
+                        </label>
+                        <input
+                          type="text"
+                          name="gstin"
+                          id="gstin"
+                          value={formData.gstin}
+                          onChange={handleChange}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="panNumber" className="block text-sm font-semibold text-gray-700 mb-2">
+                          PAN Number
+                        </label>
+                        <input
+                          type="text"
+                          name="panNumber"
+                          id="panNumber"
+                          value={formData.panNumber}
+                          onChange={handleChange}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                      <div>
+                        <label htmlFor="taxId" className="block text-sm font-semibold text-gray-700 mb-2">
+                          Tax ID
+                        </label>
+                        <input
+                          type="text"
+                          name="taxId"
+                          id="taxId"
+                          value={formData.taxId}
+                          onChange={handleChange}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="registrationNumber" className="block text-sm font-semibold text-gray-700 mb-2">
+                          Registration Number
+                        </label>
+                        <input
+                          type="text"
+                          name="registrationNumber"
+                          id="registrationNumber"
+                          value={formData.registrationNumber}
+                          onChange={handleChange}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="paymentTerms" className="block text-sm font-semibold text-gray-700 mb-2">
+                          Payment Terms
+                        </label>
+                        <input
+                          type="text"
+                          name="paymentTerms"
+                          id="paymentTerms"
+                          value={formData.paymentTerms}
+                          onChange={handleChange}
+                          placeholder="e.g., Net 30"
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label htmlFor="creditLimit" className="block text-sm font-semibold text-gray-700 mb-2">
+                        Credit Limit
+                      </label>
+                      <input
+                        type="number"
+                        name="creditLimit"
+                        id="creditLimit"
+                        value={formData.creditLimit}
+                        onChange={handleChange}
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                       />
                     </div>
 
                     <div>
-                      <label htmlFor="vatNumber" className="block text-sm font-medium text-gray-700">
-                        VAT Number
+                      <label htmlFor="notes" className="block text-sm font-semibold text-gray-700 mb-2">
+                        Notes
                       </label>
-                      <input
-                        type="text"
-                        name="vatNumber"
-                        id="vatNumber"
-                        value={formData.vatNumber}
+                      <textarea
+                        name="notes"
+                        id="notes"
+                        rows={3}
+                        value={formData.notes}
                         onChange={handleChange}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                       />
                     </div>
                   </div>
@@ -258,18 +492,18 @@ const ClientFormModal = ({ client = null, onClose }) => {
               </div>
             </div>
 
-            <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+            <div className="bg-gray-50 px-6 py-4 sm:flex sm:flex-row-reverse gap-3 border-t border-gray-200">
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full sm:w-auto inline-flex justify-center rounded-xl border border-transparent shadow-lg px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-base font-medium text-white hover:shadow-xl transition-all sm:ml-3 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? 'Saving...' : client ? 'Update Client' : 'Create Client'}
               </button>
               <button
                 type="button"
                 onClick={onClose}
-                className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                className="mt-3 sm:mt-0 w-full sm:w-auto inline-flex justify-center rounded-xl border border-gray-300 shadow-sm px-6 py-2.5 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>

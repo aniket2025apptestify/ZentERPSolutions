@@ -9,12 +9,12 @@ const Layout = ({ children }) => {
   const user = useSelector(selectUser);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} user={user} />
 
       {/* Main Content */}
-      <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:pl-64' : 'lg:pl-20'}`}>
+      <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:pl-72' : 'lg:pl-20'}`}>
         {/* Header */}
         <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} user={user} />
 
@@ -28,4 +28,3 @@ const Layout = ({ children }) => {
 };
 
 export default Layout;
-

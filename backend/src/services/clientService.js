@@ -158,8 +158,21 @@ const createClient = async (tenantId, data) => {
       companyName: data.companyName?.trim() || null,
       email: data.email?.trim() || null,
       phone: data.phone?.trim() || null,
+      phone2: data.phone2?.trim() || null,
       address: data.address?.trim() || null,
+      city: data.city?.trim() || null,
+      state: data.state?.trim() || null,
+      country: data.country?.trim() || null,
+      zipCode: data.zipCode?.trim() || null,
       vatNumber: data.vatNumber?.trim() || null,
+      gstin: data.gstin?.trim() || null,
+      panNumber: data.panNumber?.trim() || null,
+      taxId: data.taxId?.trim() || null,
+      website: data.website?.trim() || null,
+      registrationNumber: data.registrationNumber?.trim() || null,
+      paymentTerms: data.paymentTerms?.trim() || null,
+      creditLimit: data.creditLimit ? parseFloat(data.creditLimit) : null,
+      notes: data.notes?.trim() || null,
       // isActive has a default value of true in the schema, so we don't need to set it explicitly
     },
   });
@@ -191,8 +204,22 @@ const updateClient = async (tenantId, clientId, data) => {
   if (data.companyName !== undefined) updateData.companyName = data.companyName?.trim() || null;
   if (data.email !== undefined) updateData.email = data.email?.trim() || null;
   if (data.phone !== undefined) updateData.phone = data.phone?.trim() || null;
+  if (data.phone2 !== undefined) updateData.phone2 = data.phone2?.trim() || null;
   if (data.address !== undefined) updateData.address = data.address?.trim() || null;
+  if (data.city !== undefined) updateData.city = data.city?.trim() || null;
+  if (data.state !== undefined) updateData.state = data.state?.trim() || null;
+  if (data.country !== undefined) updateData.country = data.country?.trim() || null;
+  if (data.zipCode !== undefined) updateData.zipCode = data.zipCode?.trim() || null;
   if (data.vatNumber !== undefined) updateData.vatNumber = data.vatNumber?.trim() || null;
+  if (data.gstin !== undefined) updateData.gstin = data.gstin?.trim() || null;
+  if (data.panNumber !== undefined) updateData.panNumber = data.panNumber?.trim() || null;
+  if (data.taxId !== undefined) updateData.taxId = data.taxId?.trim() || null;
+  if (data.website !== undefined) updateData.website = data.website?.trim() || null;
+  if (data.registrationNumber !== undefined) updateData.registrationNumber = data.registrationNumber?.trim() || null;
+  if (data.paymentTerms !== undefined) updateData.paymentTerms = data.paymentTerms?.trim() || null;
+  if (data.creditLimit !== undefined) updateData.creditLimit = data.creditLimit ? parseFloat(data.creditLimit) : null;
+  if (data.notes !== undefined) updateData.notes = data.notes?.trim() || null;
+  if (data.isActive !== undefined) updateData.isActive = data.isActive;
 
   return await prisma.client.update({
     where: { id: clientId },

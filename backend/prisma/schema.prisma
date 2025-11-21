@@ -57,24 +57,38 @@ model User {
 }
 
 model Client {
-  id            String         @id @default(cuid())
-  tenantId      String
-  name          String
-  companyName   String?
-  email         String?
-  phone         String?
-  address       String?
-  vatNumber     String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  isActive      Boolean        @default(true)
-  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  deliveryNotes DeliveryNote[]
-  inquiries     Inquiry[]
-  invoices      Invoice[]
-  projects      Project[]
-  quotations    Quotation[]
-  returnRecords ReturnRecord[]
+  id                String          @id @default(cuid())
+  tenantId          String
+  name              String
+  companyName       String?
+  email             String?
+  phone             String?
+  phone2            String?
+  address           String?
+  city              String?
+  state             String?
+  country           String?
+  zipCode           String?
+  vatNumber         String?
+  gstin             String?
+  panNumber         String?
+  taxId             String?
+  website           String?
+  registrationNumber String?
+  paymentTerms      String?
+  creditLimit       Float?
+  notes             String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  isActive          Boolean         @default(true)
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deliveryNotes     DeliveryNote[]
+  inquiries         Inquiry[]
+  invoices          Invoice[]
+  projects          Project[]
+  quotations        Quotation[]
+  returnRecords     ReturnRecord[]
+  purchaseOrders    PurchaseOrder[]
 }
 
 model Inquiry {
@@ -395,6 +409,7 @@ model PurchaseOrder {
   tenantId          String
   poNumber          String           @unique
   vendorId          String
+  clientId          String?
   materialRequestId String?
   projectId         String?
   subGroupId        String?
@@ -415,6 +430,7 @@ model PurchaseOrder {
   subGroup          SubGroup?        @relation(fields: [subGroupId], references: [id])
   tenant            Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   vendor            Vendor           @relation(fields: [vendorId], references: [id])
+  client            Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
 }
 
 model POLine {
@@ -569,11 +585,27 @@ model Vendor {
   id                    String                 @id @default(cuid())
   tenantId              String
   name                  String
+  companyName           String?
   contactPerson         String?
   email                 String?
+  email2                String?
   phone                 String?
+  phone2                String?
   address               String?
+  city                  String?
+  state                 String?
+  country               String?
+  zipCode               String?
+  vatNumber             String?
+  gstin                 String?
+  panNumber             String?
+  taxId                 String?
+  website               String?
+  registrationNumber    String?
   bankDetails           Json?
+  paymentTerms          String?
+  creditLimit           Float?
+  notes                 String?
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
   tenant                Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)

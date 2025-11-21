@@ -55,6 +55,34 @@ export const createVendor = createAsyncThunk(
   }
 );
 
+export const updateVendor = createAsyncThunk(
+  'vendors/updateVendor',
+  async ({ id, data }, { rejectWithValue }) => {
+    try {
+      const response = await api.put(`/api/procurement/vendors/${id}`, data);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to update vendor'
+      );
+    }
+  }
+);
+
+export const deleteVendor = createAsyncThunk(
+  'vendors/deleteVendor',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await api.delete(`/api/procurement/vendors/${id}`);
+      return id;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to delete vendor'
+      );
+    }
+  }
+);
+
 const vendorsSlice = createSlice({
   name: 'vendors',
   initialState,
@@ -101,6 +129,39 @@ const vendorsSlice = createSlice({
         state.list.push(action.payload);
       })
       .addCase(createVendor.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload;
+      })
+      .addCase(updateVendor.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(updateVendor.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        const index = state.list.findIndex((v) => v.id === action.payload.id);
+        if (index !== -1) {
+          state.list[index] = action.payload;
+        }
+        if (state.current?.id === action.payload.id) {
+          state.current = action.payload;
+        }
+      })
+      .addCase(updateVendor.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload;
+      })
+      .addCase(deleteVendor.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(deleteVendor.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.list = state.list.filter((v) => v.id !== action.payload);
+        if (state.current?.id === action.payload) {
+          state.current = null;
+        }
+      })
+      .addCase(deleteVendor.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload;
       });
