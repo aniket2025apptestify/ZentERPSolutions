@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -9,13 +10,38 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // Health check route
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Zent ERP Backend is running' });
 });
 
-// API routes will be added here
-// app.use('/api', routes);
+// API routes
+const authRoutes = require('./routes/authRoutes');
+const tenantRoutes = require('./routes/tenantRoutes');
+
+app.use('/api/auth', authRoutes);
+app.use('/api/tenants', tenantRoutes);
+app.use('/api/tenant', require('./routes/tenantSettingsRoutes'));
+app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/clients', require('./routes/clientRoutes'));
+app.use('/api/inquiries', require('./routes/inquiryRoutes'));
+app.use('/api/documents', require('./routes/documentRoutes'));
+app.use('/api/quotations', require('./routes/quotationRoutes'));
+app.use('/api/projects', require('./routes/projectRoutes'));
+app.use('/api/procurement', require('./routes/procurementRoutes'));
+app.use('/api/inventory', require('./routes/inventoryRoutes'));
+app.use('/api/production', require('./routes/productionRoutes'));
+app.use('/api/qc', require('./routes/qcRoutes'));
+app.use('/api/rework', require('./routes/reworkRoutes'));
+app.use('/api/returns', require('./routes/returnsRoutes'));
+app.use('/api', require('./routes/dispatchRoutes'));
+app.use('/api/invoices', require('./routes/invoiceRoutes'));
+app.use('/api/payments', require('./routes/paymentRoutes'));
+app.use('/api/credit-notes', require('./routes/creditNoteRoutes'));
+app.use('/api/reports', require('./routes/reportRoutes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
