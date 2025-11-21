@@ -4,7 +4,7 @@ const { createAuditLog } = require('../services/auditLogService');
 const {
   testCloudinaryConnection,
   initializeCloudinary,
-  uploadToCloudinary,
+  uploadBufferToCloudinary,
   deleteFromCloudinary,
 } = require('../services/cloudinaryService');
 const { Role } = require('@prisma/client');
@@ -421,60 +421,61 @@ const uploadTenantLogo = async (req, res) => {
     });
 
     if (!existingTenant) {
-      // Delete uploaded file if tenant doesn't exist
-      await fs.unlink(req.file.path).catch(() => {});
       return res.status(404).json({ message: 'Tenant not found' });
     }
 
     const settings = existingTenant.settings || {};
     const cloudinaryConfig = settings.cloudinary || {};
-    let fileUrl = `/uploads/logos/${req.file.filename}`;
-    let cloudinaryPublicId = null;
+    
+    if (!cloudinaryConfig.enabled || !cloudinaryConfig.cloudName || !cloudinaryConfig.apiKey || !cloudinaryConfig.apiSecret) {
+      return res.status(400).json({ 
+        message: 'Cloudinary is not configured. Please configure Cloudinary in tenant settings.' 
+      });
+    }
 
-    // Upload to Cloudinary if enabled and configured
-    if (cloudinaryConfig.enabled && cloudinaryConfig.cloudName && cloudinaryConfig.apiKey && cloudinaryConfig.apiSecret) {
+    // Initialize Cloudinary with tenant-specific credentials
+    initializeCloudinary(
+      cloudinaryConfig.cloudName,
+      cloudinaryConfig.apiKey,
+      cloudinaryConfig.apiSecret
+    );
+
+    // Delete old logo from Cloudinary if it exists
+    if (existingTenant.logoUrl && existingTenant.logoUrl.includes('cloudinary.com')) {
       try {
-        initializeCloudinary(
-          cloudinaryConfig.cloudName,
-          cloudinaryConfig.apiKey,
-          cloudinaryConfig.apiSecret
-        );
+        // Extract public ID from Cloudinary URL
+        const urlParts = existingTenant.logoUrl.split('/');
+        const fileName = urlParts[urlParts.length - 1];
+        const publicIdWithExt = fileName.split('.')[0];
+        const folder = `zent-erp/${tenantId}/logos`;
+        const publicId = `${folder}/${publicIdWithExt}`;
+        await deleteFromCloudinary(publicId).catch(() => {});
+      } catch (error) {
+        console.error('Error deleting old Cloudinary logo:', error);
+      }
+    }
 
-        // Delete old logo from Cloudinary if it exists
-        if (existingTenant.logoUrl && existingTenant.logoUrl.includes('cloudinary.com')) {
-          // Extract public ID from Cloudinary URL if possible
-          // This is a simple extraction - you might need to store public ID separately
-          try {
-            const urlParts = existingTenant.logoUrl.split('/');
-            const publicIdWithExt = urlParts[urlParts.length - 1].split('.')[0];
-            const folder = `zent-erp/${tenantId}/logos`;
-            const publicId = `${folder}/${publicIdWithExt}`;
-            await deleteFromCloudinary(publicId).catch(() => {});
-          } catch (error) {
-            console.error('Error deleting old Cloudinary logo:', error);
-          }
-        }
-
-        const uploadResult = await uploadToCloudinary(req.file.path, {
+    // Upload to Cloudinary from buffer
+    let fileUrl;
+    let cloudinaryPublicId;
+    try {
+      const uploadResult = await uploadBufferToCloudinary(
+        req.file.buffer,
+        req.file.originalname,
+        {
           folder: `zent-erp/${tenantId}/logos`,
           resource_type: 'image',
-        });
+        }
+      );
 
-        fileUrl = uploadResult.url;
-        cloudinaryPublicId = uploadResult.publicId;
-
-        // Delete local file after successful Cloudinary upload
-        await fs.unlink(req.file.path).catch(() => {});
-      } catch (error) {
-        console.error('Cloudinary upload failed, using local storage:', error);
-        // Continue with local storage if Cloudinary fails
-      }
-    } else {
-      // Delete old local logo if exists
-      if (existingTenant.logoUrl && existingTenant.logoUrl.startsWith('/uploads/')) {
-        const oldLogoPath = path.join(__dirname, '../../', existingTenant.logoUrl.replace(/^\//, ''));
-        await fs.unlink(oldLogoPath).catch(() => {}); // Ignore errors if file doesn't exist
-      }
+      fileUrl = uploadResult.url;
+      cloudinaryPublicId = uploadResult.publicId;
+    } catch (error) {
+      console.error('Cloudinary upload error:', error);
+      return res.status(500).json({ 
+        message: 'Failed to upload logo to Cloudinary',
+        error: error.message 
+      });
     }
 
     // Update tenant with new logo URL
@@ -498,13 +499,10 @@ const uploadTenantLogo = async (req, res) => {
     res.json({ logoUrl: fileUrl });
   } catch (error) {
     console.error('Upload tenant logo error:', error);
-    
-    // Clean up uploaded file on error
-    if (req.file && req.file.path) {
-      await fs.unlink(req.file.path).catch(() => {});
-    }
-
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ 
+      message: 'Internal server error',
+      error: error.message 
+    });
   }
 };
 

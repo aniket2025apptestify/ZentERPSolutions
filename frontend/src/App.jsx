@@ -58,6 +58,11 @@ import DNDetail from './pages/dispatch/DNDetail';
 import CreateDN from './pages/dispatch/CreateDN';
 import VehicleManagement from './pages/dispatch/VehicleManagement';
 import DriverManagement from './pages/dispatch/DriverManagement';
+import InvoiceList from './pages/invoicing/InvoiceList';
+import InvoiceDetail from './pages/invoicing/InvoiceDetail';
+import CreateInvoice from './pages/invoicing/CreateInvoice';
+import CreditNotes from './pages/invoicing/CreditNotes';
+import ARAgingReport from './pages/invoicing/ARAgingReport';
 import './App.css';
 
 function App() {
@@ -607,6 +612,58 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <DriverManagement />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Invoicing Routes */}
+            <Route
+              path="/invoices"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <InvoiceList />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/invoices/create"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <CreateInvoice />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/invoices/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <InvoiceDetail />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/credit-notes"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <CreditNotes />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reports/ar-aging"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ARAgingReport />
                   </Layout>
                 </ProtectedRoute>
               }

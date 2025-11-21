@@ -44,6 +44,8 @@ model Tenant {
   deliveryNotes         DeliveryNote[]
   vehicles              Vehicle[]
   drivers               Driver[]
+  payments              Payment[]
+  creditNotes           CreditNote[]
 }
 
 model User {
@@ -92,6 +94,7 @@ model Client {
   quotations        Quotation[]
   returnRecords     ReturnRecord[]
   purchaseOrders    PurchaseOrder[]
+  creditNotes       CreditNote[]
 }
 
 model Inquiry {
@@ -568,22 +571,35 @@ model DeliveryAcknowledgement {
 
 model Invoice {
   id            String        @id @default(cuid())
-  invoiceNumber String        @unique
   tenantId      String
-  projectId     String
+  invoiceNumber String        @unique
+  invoiceType   String        // INTERNAL | EXTERNAL | PROFORMA | CREDIT_NOTE
+  projectId     String?
   clientId      String
-  type          String
+  dnIds         Json?         // optional: [dn1, dn2]
   subtotal      Float
-  discount      Float?
+  discount      Float?        @default(0)
   vatPercent    Float?
   vatAmount     Float?
   total         Float
-  status        String
+  status        String        // DRAFT | SENT | PARTIALLY_PAID | PAID | CANCELLED
+  dueDate       DateTime?
+  issuedDate    DateTime      @default(now())
+  notes         String?
+  createdBy     String
   createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  sentAt        DateTime?
+  sentBy        String?
+  cancelledAt   DateTime?
+  cancelledBy   String?
+  cancelReason  String?
   client        Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  project       Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project       Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
   tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   invoiceLines  InvoiceLine[]
+  payments      Payment[]
+  creditNotes   CreditNote[]
 }
 
 model InvoiceLine {
@@ -591,9 +607,41 @@ model InvoiceLine {
   invoiceId   String
   description String
   qty         Float
+  unit        String?
   unitRate    Float
   total       Float
   invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  tenantId    String
+  invoiceId   String
+  paymentDate DateTime @default(now())
+  amount      Float
+  method      String   // CASH | BANK_TRANSFER | CHEQUE | CREDIT_CARD | ADVANCE
+  reference   String?  // bank transaction id / cheque no
+  receivedBy  String?
+  createdAt   DateTime @default(now())
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model CreditNote {
+  id              String   @id @default(cuid())
+  tenantId        String
+  creditNoteNumber String  @unique
+  invoiceId       String?
+  clientId        String
+  amount          Float
+  reason          String?
+  createdBy       String
+  createdAt       DateTime @default(now())
+  applied         Boolean  @default(false)
+  appliedTo       Json?    // [{ invoiceId, amountApplied }]
+  invoice         Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model Employee {

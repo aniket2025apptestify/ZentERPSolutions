@@ -20,6 +20,9 @@ import returnsReducer from './slices/returnsSlice';
 import dnReducer from './slices/dnSlice';
 import vehicleReducer from './slices/vehicleSlice';
 import driverReducer from './slices/driverSlice';
+import invoicesReducer from './slices/invoicesSlice';
+import paymentsReducer from './slices/paymentsSlice';
+import creditNotesReducer from './slices/creditNotesSlice';
 
 export const store = configureStore({
   reducer: {
@@ -44,6 +47,9 @@ export const store = configureStore({
     dn: dnReducer,
     vehicles: vehicleReducer,
     drivers: driverReducer,
+    invoices: invoicesReducer,
+    payments: paymentsReducer,
+    creditNotes: creditNotesReducer,
   },
 });
 

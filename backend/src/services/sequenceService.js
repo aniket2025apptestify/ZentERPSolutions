@@ -425,6 +425,118 @@ const generateDNNumber = async (tenantId) => {
   }
 };
 
+/**
+ * Generate next Invoice number for a tenant
+ * Format: {TENANT_CODE}-INV-{YYYYMMDD}-{NNNN}
+ * @param {String} tenantId - Tenant ID
+ * @returns {Promise<String>} Generated invoice number
+ */
+const generateInvoiceNumber = async (tenantId) => {
+  try {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { code: true },
+    });
+
+    if (!tenant) {
+      throw new Error('Tenant not found');
+    }
+
+    const tenantCode = tenant.code.toUpperCase();
+    const today = new Date();
+    const dateStr = today.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+    const prefix = `${tenantCode}-INV-${dateStr}-`;
+
+    const lastInvoice = await prisma.invoice.findFirst({
+      where: {
+        tenantId: tenantId,
+        invoiceNumber: {
+          startsWith: prefix,
+        },
+      },
+      orderBy: {
+        invoiceNumber: 'desc',
+      },
+      select: {
+        invoiceNumber: true,
+      },
+    });
+
+    let counter = 1;
+    if (lastInvoice) {
+      const lastCounter = parseInt(
+        lastInvoice.invoiceNumber.slice(prefix.length),
+        10
+      );
+      if (!isNaN(lastCounter)) {
+        counter = lastCounter + 1;
+      }
+    }
+
+    const counterStr = counter.toString().padStart(4, '0');
+    return `${prefix}${counterStr}`;
+  } catch (error) {
+    console.error('Error generating invoice number:', error);
+    throw error;
+  }
+};
+
+/**
+ * Generate next Credit Note number for a tenant
+ * Format: {TENANT_CODE}-CN-{YYYYMMDD}-{NNNN}
+ * @param {String} tenantId - Tenant ID
+ * @returns {Promise<String>} Generated credit note number
+ */
+const generateCreditNoteNumber = async (tenantId) => {
+  try {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { code: true },
+    });
+
+    if (!tenant) {
+      throw new Error('Tenant not found');
+    }
+
+    const tenantCode = tenant.code.toUpperCase();
+    const today = new Date();
+    const dateStr = today.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+    const prefix = `${tenantCode}-CN-${dateStr}-`;
+
+    const lastCN = await prisma.creditNote.findFirst({
+      where: {
+        tenantId: tenantId,
+        creditNoteNumber: {
+          startsWith: prefix,
+        },
+      },
+      orderBy: {
+        creditNoteNumber: 'desc',
+      },
+      select: {
+        creditNoteNumber: true,
+      },
+    });
+
+    let counter = 1;
+    if (lastCN) {
+      const lastCounter = parseInt(
+        lastCN.creditNoteNumber.slice(prefix.length),
+        10
+      );
+      if (!isNaN(lastCounter)) {
+        counter = lastCounter + 1;
+      }
+    }
+
+    const counterStr = counter.toString().padStart(4, '0');
+    return `${prefix}${counterStr}`;
+  } catch (error) {
+    console.error('Error generating credit note number:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   generateQuotationNumber,
   generateProjectCode,
@@ -433,5 +545,7 @@ module.exports = {
   generatePONumber,
   generateGRNNumber,
   generateDNNumber,
+  generateInvoiceNumber,
+  generateCreditNoteNumber,
 };
 

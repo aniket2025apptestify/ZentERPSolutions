@@ -38,6 +38,10 @@ app.use('/api/qc', require('./routes/qcRoutes'));
 app.use('/api/rework', require('./routes/reworkRoutes'));
 app.use('/api/returns', require('./routes/returnsRoutes'));
 app.use('/api', require('./routes/dispatchRoutes'));
+app.use('/api/invoices', require('./routes/invoiceRoutes'));
+app.use('/api/payments', require('./routes/paymentRoutes'));
+app.use('/api/credit-notes', require('./routes/creditNoteRoutes'));
+app.use('/api/reports', require('./routes/reportRoutes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

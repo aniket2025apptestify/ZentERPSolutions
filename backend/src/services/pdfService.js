@@ -438,28 +438,71 @@ const generateInvoicePDF = async (invoice, tenant) => {
       // Add company header (logo + formatted company info)
       const headerEndY = addCompanyHeader(doc, tenant);
 
-      // Header
-      doc.fontSize(24).font('Helvetica-Bold').text('INVOICE', 50, headerEndY, { align: 'center' });
+      // Header - Invoice Title (Top Right)
+      doc.fontSize(24).font('Helvetica-Bold').text('INVOICE', 400, headerEndY, { align: 'right' });
       
-      // Invoice Details
-      doc.fontSize(12).font('Helvetica-Bold').text(`Invoice Number: ${invoice.invoiceNumber}`, 50, headerEndY + 40);
-      doc.fontSize(10).font('Helvetica')
-        .text(`Date: ${new Date(invoice.createdAt).toLocaleDateString()}`, 50, headerEndY + 60);
+      // Invoice Details (Left side)
+      let yPos = headerEndY + 40;
+      doc.fontSize(10).font('Helvetica-Bold').text('Invoice Number:', 50, yPos);
+      doc.fontSize(12).font('Helvetica-Bold').text(invoice.invoiceNumber, 50, yPos + 15);
+      
+      yPos += 40;
+      doc.fontSize(10).font('Helvetica').text(`Issue Date: ${new Date(invoice.issuedDate || invoice.createdAt).toLocaleDateString()}`, 50, yPos);
+      if (invoice.dueDate) {
+        yPos += 15;
+        doc.text(`Due Date: ${new Date(invoice.dueDate).toLocaleDateString()}`, 50, yPos);
+      }
+      if (invoice.invoiceType) {
+        yPos += 15;
+        doc.text(`Type: ${invoice.invoiceType}`, 50, yPos);
+      }
 
-      // Client Info
+      // Client Info (Bill To)
+      yPos += 30;
+      doc.fontSize(11).font('Helvetica-Bold').text('Bill To:', 50, yPos);
       if (invoice.client) {
-        doc.text(`Bill To: ${invoice.client.name}`, 50, headerEndY + 100);
-        if (invoice.client.address) doc.text(invoice.client.address, 50, headerEndY + 120);
-        if (invoice.client.email) doc.text(`Email: ${invoice.client.email}`, 50, headerEndY + 140);
+        yPos += 20;
+        doc.fontSize(10).font('Helvetica');
+        doc.text(invoice.client.companyName || invoice.client.name || '', 50, yPos);
+        if (invoice.client.address) {
+          yPos += 15;
+          doc.text(invoice.client.address, 50, yPos);
+        }
+        if (invoice.client.phone) {
+          yPos += 15;
+          doc.text(`Phone: ${invoice.client.phone}`, 50, yPos);
+        }
+        if (invoice.client.email) {
+          yPos += 15;
+          doc.text(`Email: ${invoice.client.email}`, 50, yPos);
+        }
+        if (invoice.client.vatNumber) {
+          yPos += 15;
+          doc.text(`VAT: ${invoice.client.vatNumber}`, 50, yPos);
+        }
+      }
+
+      // Project Info (if available)
+      if (invoice.project) {
+        yPos += 30;
+        doc.fontSize(11).font('Helvetica-Bold').text('Project:', 50, yPos);
+        yPos += 20;
+        doc.fontSize(10).font('Helvetica');
+        doc.text(invoice.project.name || '', 50, yPos);
+        if (invoice.project.projectCode) {
+          yPos += 15;
+          doc.text(`Project Code: ${invoice.project.projectCode}`, 50, yPos);
+        }
       }
 
       // Items Table
-      let yPos = headerEndY + 180;
+      yPos = Math.max(yPos + 40, headerEndY + 200);
       doc.rect(50, yPos, 500, 25).fillAndStroke('#0066CC', '#0066CC');
       doc.fillColor('white').fontSize(10).font('Helvetica-Bold')
         .text('DESCRIPTION', 60, yPos + 8)
-        .text('QTY', 300, yPos + 8)
-        .text('UNIT RATE', 350, yPos + 8)
+        .text('QTY', 280, yPos + 8)
+        .text('UNIT', 320, yPos + 8)
+        .text('RATE', 380, yPos + 8)
         .text('TOTAL', 480, yPos + 8);
 
       yPos += 30;
@@ -471,9 +514,10 @@ const generateInvoicePDF = async (invoice, tenant) => {
             doc.addPage();
             yPos = 50;
           }
-          doc.text(line.description || '-', 60, yPos, { width: 230 })
-            .text((line.qty || 0).toString(), 300, yPos)
-            .text(`$${(line.unitRate || 0).toFixed(2)}`, 350, yPos)
+          doc.text(line.description || '-', 60, yPos, { width: 210 })
+            .text((line.qty || 0).toString(), 280, yPos)
+            .text(line.unit || '-', 320, yPos, { width: 50 })
+            .text(`$${(line.unitRate || 0).toFixed(2)}`, 380, yPos)
             .text(`$${(line.total || 0).toFixed(2)}`, 480, yPos);
           yPos += 20;
           doc.moveTo(50, yPos - 5).lineTo(550, yPos - 5).stroke();
@@ -482,23 +526,36 @@ const generateInvoicePDF = async (invoice, tenant) => {
 
       // Financial Summary
       yPos += 20;
-      doc.fontSize(10)
+      doc.fontSize(10).font('Helvetica')
         .text('SUBTOTAL', 400, yPos)
         .text(`$${(invoice.subtotal || 0).toFixed(2)}`, 480, yPos);
       yPos += 20;
-      if (invoice.discount) {
+      if (invoice.discount && invoice.discount > 0) {
         doc.text('DISCOUNT', 400, yPos)
-          .text(`$${(invoice.discount || 0).toFixed(2)}`, 480, yPos);
+          .text(`-$${(invoice.discount || 0).toFixed(2)}`, 480, yPos);
         yPos += 20;
       }
-      if (invoice.vatAmount) {
+      if (invoice.vatAmount && invoice.vatAmount > 0) {
         doc.text(`VAT (${invoice.vatPercent || 0}%)`, 400, yPos)
           .text(`$${(invoice.vatAmount || 0).toFixed(2)}`, 480, yPos);
         yPos += 20;
       }
-      doc.font('Helvetica-Bold')
+      doc.font('Helvetica-Bold').fontSize(12)
         .text('TOTAL', 400, yPos)
         .text(`$${(invoice.total || 0).toFixed(2)}`, 480, yPos);
+
+      // Notes
+      if (invoice.notes) {
+        yPos += 40;
+        doc.font('Helvetica-Bold').fontSize(10).text('Notes:', 50, yPos);
+        yPos += 20;
+        doc.font('Helvetica').fontSize(10).text(invoice.notes, 50, yPos, { width: 500 });
+      }
+
+      // Footer
+      yPos = 750;
+      doc.fontSize(8).font('Helvetica').fillColor('gray')
+        .text('Thank you for your business!', 50, yPos, { align: 'center' });
 
       doc.end();
     } catch (error) {

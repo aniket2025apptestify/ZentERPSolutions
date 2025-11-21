@@ -1,30 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs').promises;
 const tenantController = require('../controllers/tenantController');
 const { authenticate } = require('../middleware/auth');
 const { permit } = require('../middleware/permissions');
 const { Role } = require('@prisma/client');
 
-// Configure multer for logo upload
-const storage = multer.diskStorage({
-  destination: async (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../../uploads/logos');
-    try {
-      await fs.mkdir(uploadDir, { recursive: true });
-      cb(null, uploadDir);
-    } catch (error) {
-      cb(error);
-    }
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    const ext = path.extname(file.originalname);
-    cb(null, `logo-${uniqueSuffix}${ext}`);
-  },
-});
+// Configure multer to use memory storage (for Cloudinary upload)
+const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
   // Only allow image files
