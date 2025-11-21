@@ -53,6 +53,11 @@ import ReworkDetail from './pages/rework/ReworkDetail';
 import ReturnManagement from './pages/returns/ReturnManagement';
 import CompanySettings from './pages/settings/CompanySettings';
 import RoleBasedRoute from './components/RoleBasedRoute';
+import DispatchDashboard from './pages/dispatch/DispatchDashboard';
+import DNDetail from './pages/dispatch/DNDetail';
+import CreateDN from './pages/dispatch/CreateDN';
+import VehicleManagement from './pages/dispatch/VehicleManagement';
+import DriverManagement from './pages/dispatch/DriverManagement';
 import './App.css';
 
 function App() {
@@ -550,6 +555,58 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <ReturnManagement />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Dispatch Routes */}
+            <Route
+              path="/dispatch"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <DispatchDashboard />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dispatch/dn/create"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <CreateDN />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dispatch/dn/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <DNDetail />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dispatch/vehicles"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <VehicleManagement />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dispatch/drivers"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <DriverManagement />
                   </Layout>
                 </ProtectedRoute>
               }

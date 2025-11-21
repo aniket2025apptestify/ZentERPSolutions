@@ -37,6 +37,7 @@ app.use('/api/production', require('./routes/productionRoutes'));
 app.use('/api/qc', require('./routes/qcRoutes'));
 app.use('/api/rework', require('./routes/reworkRoutes'));
 app.use('/api/returns', require('./routes/returnsRoutes'));
+app.use('/api', require('./routes/dispatchRoutes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

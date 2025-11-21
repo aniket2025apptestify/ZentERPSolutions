@@ -17,6 +17,9 @@ import productionReducer from './slices/productionSlice';
 import qcReducer from './slices/qcSlice';
 import reworkReducer from './slices/reworkSlice';
 import returnsReducer from './slices/returnsSlice';
+import dnReducer from './slices/dnSlice';
+import vehicleReducer from './slices/vehicleSlice';
+import driverReducer from './slices/driverSlice';
 
 export const store = configureStore({
   reducer: {
@@ -38,6 +41,9 @@ export const store = configureStore({
     qc: qcReducer,
     rework: reworkReducer,
     returns: returnsReducer,
+    dn: dnReducer,
+    vehicles: vehicleReducer,
+    drivers: driverReducer,
   },
 });
 

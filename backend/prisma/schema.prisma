@@ -41,6 +41,9 @@ model Tenant {
   reworkJobs            ReworkJob[]
   returnRecords         ReturnRecord[]
   notifications         Notification[]
+  deliveryNotes         DeliveryNote[]
+  vehicles              Vehicle[]
+  drivers               Driver[]
 }
 
 model User {
@@ -276,6 +279,7 @@ model InventoryItem {
   poLines           POLine[]
   stockTransactions StockTransaction[]
   wastageRecords    WastageRecord[]
+  deliveryNoteItems DeliveryNoteItem[]
 }
 
 model StockTransaction {
@@ -462,34 +466,104 @@ model GRN {
 }
 
 model DeliveryNote {
-  id            String         @id @default(cuid())
-  dnNumber      String         @unique
+  id            String                  @id @default(cuid())
+  tenantId      String
+  dnNumber      String                  @unique
   projectId     String
   subGroupId    String?
   clientId      String
-  internal      Boolean        @default(false)
+  address       String
+  status        String                  // DRAFT | LOADING | DISPATCHED | DELIVERED | RETURNED | CANCELLED
+  vehicleId     String?
+  driverId      String?
+  dispatchedAt  DateTime?
+  deliveredAt   DateTime?
+  remarks       String?
   createdBy     String
-  createdAt     DateTime       @default(now())
-  acknowledged  Boolean        @default(false)
-  ackBy         String?
-  ackDate       DateTime?
-  dnLines       DNLine[]
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+  items         DeliveryNoteItem[]
+  documents     Json?
   qcRecords     QCRecord[]
+  returns       ReturnRecord[]
+  tracking      DeliveryTracking[]
+  acknowledgement DeliveryAcknowledgement?
+  client        Client                  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  project       Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  subGroup      SubGroup?               @relation(fields: [subGroupId], references: [id])
+  vehicle       Vehicle?                @relation(fields: [vehicleId], references: [id])
+  driver        Driver?                 @relation(fields: [driverId], references: [id])
+  tenant        Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   reworkJobs    ReworkJob[]
-  returnRecords ReturnRecord[]
-  client        Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  subGroup      SubGroup?      @relation(fields: [subGroupId], references: [id])
 }
 
-model DNLine {
-  id             String       @id @default(cuid())
-  deliveryNoteId String
+model DeliveryNoteItem {
+  id             String         @id @default(cuid())
+  dnId           String
+  tenantId       String
+  productionJobId String?
+  itemId         String?
   description    String
   qty            Float
-  areaSqm        Float?
+  loadedQty      Float?
+  deliveredQty   Float?
+  uom            String?
   remarks        String?
-  deliveryNote   DeliveryNote @relation(fields: [deliveryNoteId], references: [id], onDelete: Cascade)
+  deliveryNote   DeliveryNote   @relation(fields: [dnId], references: [id], onDelete: Cascade)
+  inventoryItem  InventoryItem? @relation(fields: [itemId], references: [id], onDelete: SetNull)
+}
+
+model Vehicle {
+  id          String         @id @default(cuid())
+  tenantId    String
+  numberPlate String
+  type        String         // Pickup, Truck, Tempo, etc.
+  capacity    Float?
+  status      String         // AVAILABLE | IN_USE | MAINTENANCE
+  driverId    String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  driver      Driver?        @relation(fields: [driverId], references: [id])
+  deliveryNotes DeliveryNote[]
+}
+
+model Driver {
+  id          String         @id @default(cuid())
+  tenantId    String
+  name        String
+  phone       String
+  licenseNo   String?
+  status      String         // ACTIVE | INACTIVE
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  vehicles    Vehicle[]
+  deliveryNotes DeliveryNote[]
+}
+
+model DeliveryTracking {
+  id          String         @id @default(cuid())
+  tenantId    String
+  dnId        String
+  location    String?
+  latitude    Float?
+  longitude   Float?
+  timestamp   DateTime       @default(now())
+  remarks     String?
+  deliveryNote DeliveryNote  @relation(fields: [dnId], references: [id], onDelete: Cascade)
+}
+
+model DeliveryAcknowledgement {
+  id            String         @id @default(cuid())
+  tenantId      String
+  dnId          String         @unique
+  receivedBy    String?
+  signatureDocId String?
+  sitePhotos    Json?          // photo docIds
+  remarks       String?
+  acknowledgedAt DateTime       @default(now())
+  deliveryNote  DeliveryNote   @relation(fields: [dnId], references: [id], onDelete: Cascade)
 }
 
 model Invoice {
