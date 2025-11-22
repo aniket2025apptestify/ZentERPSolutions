@@ -1,53 +1,53 @@
 const prisma = require('../config/prisma');
 const { createAuditLog } = require('../services/auditLogService');
-const { notifyReturnCreated, notifyReworkCreated } = require('../services/notificationService');
+const { generateReturnNumber } = require('../services/sequenceService');
+const {
+  processAcceptReturn,
+  processReworkReturn,
+  processScrapReturn,
+  createReplacementDN: createReplacementDNService,
+} = require('../services/returnsService');
+const {
+  notifyReturnCreated,
+  notifyReworkCreated,
+  notifyReturnInspection,
+} = require('../services/notificationService');
 
 /**
- * Create return record
+ * Create Return Record
  * POST /api/returns
  */
 const createReturn = async (req, res) => {
   try {
-    const { dnId, clientId, reason, items, createdBy } = req.body;
+    const { dnId, invoiceId, clientId, createdBy, reason, items, notes } = req.body;
     const tenantId = req.tenantId;
 
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
-    if (!dnId || !clientId || !reason || !items || !createdBy) {
+    if (!clientId || !createdBy || !items) {
       return res.status(400).json({
-        message: 'dnId, clientId, reason, items, and createdBy are required',
+        message: 'clientId, createdBy, and items are required',
       });
     }
 
     if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ message: 'items must be a non-empty array' });
+      return res.status(400).json({ message: 'items must be a non-empty array with at least one item with qty > 0' });
     }
 
-    // Validate delivery note exists and belongs to tenant
-    const dn = await prisma.deliveryNote.findFirst({
-      where: {
-        id: dnId,
-        project: {
-          tenantId,
-        },
-      },
-      include: {
-        dnLines: true,
-        project: true,
-      },
-    });
-
-    if (!dn) {
-      return res.status(404).json({ message: 'Delivery note not found' });
+    // Validate at least one item has qty > 0
+    const hasValidQty = items.some((item) => item.qty && item.qty > 0);
+    if (!hasValidQty) {
+      return res.status(400).json({ message: 'At least one item must have qty > 0' });
     }
 
-    // Validate client
+    // Validate client exists
     const client = await prisma.client.findFirst({
       where: {
         id: clientId,
         tenantId,
+        isActive: true,
       },
     });
 
@@ -55,20 +55,57 @@ const createReturn = async (req, res) => {
       return res.status(404).json({ message: 'Client not found' });
     }
 
-    // Validate return quantities don't exceed dispatched quantities
-    for (const returnItem of items) {
-      const dnLine = dn.dnLines.find((line) => line.id === returnItem.dnLineId);
-      if (!dnLine) {
-        return res.status(400).json({
-          message: `DN line ${returnItem.dnLineId} not found`,
-        });
+    // Validate DN if provided
+    if (dnId) {
+      const dn = await prisma.deliveryNote.findFirst({
+        where: {
+          id: dnId,
+          tenantId,
+        },
+        include: {
+          items: true,
+        },
+      });
+
+      if (!dn) {
+        return res.status(404).json({ message: 'Delivery note not found' });
       }
-      if (returnItem.qty > dnLine.qty) {
-        return res.status(400).json({
-          message: `Return quantity (${returnItem.qty}) exceeds dispatched quantity (${dnLine.qty}) for line ${returnItem.dnLineId}`,
-        });
+
+      // Validate return quantities don't exceed dispatched quantities
+      for (const returnItem of items) {
+        if (returnItem.dnLineId) {
+          const dnLine = dn.items.find((line) => line.id === returnItem.dnLineId);
+          if (!dnLine) {
+            return res.status(400).json({
+              message: `DN line ${returnItem.dnLineId} not found`,
+            });
+          }
+          if (returnItem.qty > (dnLine.deliveredQty || dnLine.qty)) {
+            return res.status(400).json({
+              message: `Return quantity (${returnItem.qty}) exceeds delivered quantity for line ${returnItem.dnLineId}`,
+            });
+          }
+        }
       }
     }
+
+    // Validate invoice if provided
+    if (invoiceId) {
+      const invoice = await prisma.invoice.findFirst({
+        where: {
+          id: invoiceId,
+          tenantId,
+          clientId,
+        },
+      });
+
+      if (!invoice) {
+        return res.status(404).json({ message: 'Invoice not found or does not belong to client' });
+      }
+    }
+
+    // Generate return number
+    const returnNumber = await generateReturnNumber(tenantId);
 
     // Use transaction
     const result = await prisma.$transaction(async (tx) => {
@@ -76,10 +113,14 @@ const createReturn = async (req, res) => {
       const returnRecord = await tx.returnRecord.create({
         data: {
           tenantId,
-          dnId,
+          returnNumber,
+          dnId: dnId || null,
+          invoiceId: invoiceId || null,
           clientId,
-          reason,
+          createdBy,
+          reason: reason || null,
           items,
+          notes: notes || null,
           status: 'PENDING',
         },
       });
@@ -92,7 +133,9 @@ const createReturn = async (req, res) => {
         entityType: 'ReturnRecord',
         entityId: returnRecord.id,
         newData: {
-          dnId,
+          returnNumber,
+          dnId: dnId || null,
+          invoiceId: invoiceId || null,
           clientId,
           reason,
           items,
@@ -107,7 +150,11 @@ const createReturn = async (req, res) => {
       return returnRecord;
     });
 
-    res.json(result);
+    res.status(201).json({
+      returnId: result.id,
+      returnNumber: result.returnNumber,
+      status: result.status,
+    });
   } catch (error) {
     console.error('Create return error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -115,238 +162,84 @@ const createReturn = async (req, res) => {
 };
 
 /**
- * Inspect return record
- * POST /api/returns/:id/inspect
+ * List returns with filters
+ * GET /api/returns?status=&clientId=&from=&to=
  */
-const inspectReturn = async (req, res) => {
+const getReturns = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { inspectedBy, result, remarks, reworkAssignedTo } = req.body;
     const tenantId = req.tenantId;
+    const { status, clientId, from, to } = req.query;
 
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
-    if (!inspectedBy || !result) {
-      return res.status(400).json({
-        message: 'inspectedBy and result are required',
-      });
+    const where = {
+      tenantId,
+    };
+
+    if (status) {
+      where.status = status;
     }
 
-    if (!['REWORK', 'SCRAP', 'ACCEPT_RETURN'].includes(result)) {
-      return res.status(400).json({
-        message: 'result must be REWORK, SCRAP, or ACCEPT_RETURN',
-      });
+    if (clientId) {
+      where.clientId = clientId;
     }
 
-    // Get return record
-    const returnRecord = await prisma.returnRecord.findFirst({
-      where: {
-        id,
-        tenantId,
-      },
+    if (from || to) {
+      where.createdAt = {};
+      if (from) {
+        where.createdAt.gte = new Date(from);
+      }
+      if (to) {
+        where.createdAt.lte = new Date(to);
+      }
+    }
+
+    const returnRecords = await prisma.returnRecord.findMany({
+      where,
       include: {
         deliveryNote: {
-          include: {
-            dnLines: true,
+          select: {
+            id: true,
+            dnNumber: true,
+            project: {
+              select: {
+                projectCode: true,
+                name: true,
+              },
+            },
+          },
+        },
+        invoice: {
+          select: {
+            id: true,
+            invoiceNumber: true,
+            total: true,
+          },
+        },
+        client: {
+          select: {
+            id: true,
+            name: true,
+            companyName: true,
           },
         },
       },
+      orderBy: {
+        createdAt: 'desc',
+      },
     });
 
-    if (!returnRecord) {
-      return res.status(404).json({ message: 'Return record not found' });
-    }
-
-    if (returnRecord.status !== 'PENDING') {
-      return res.status(400).json({
-        message: 'Return record has already been inspected',
-      });
-    }
-
-    // Use transaction for atomicity
-    const result_data = await prisma.$transaction(async (tx) => {
-      // Update return record
-      const updatedReturn = await tx.returnRecord.update({
-        where: { id },
-        data: {
-          status: 'INSPECTED',
-          inspectedBy,
-          inspectedAt: new Date(),
-          outcome: result,
-        },
-      });
-
-      let reworkJobId = null;
-
-      if (result === 'REWORK') {
-        // Create rework job
-        const reworkJob = await tx.reworkJob.create({
-          data: {
-            tenantId,
-            sourceDNId: returnRecord.dnId,
-            assignedTo: reworkAssignedTo || null,
-            createdBy: inspectedBy,
-            status: 'OPEN',
-            notes: remarks || null,
-          },
-        });
-
-        reworkJobId = reworkJob.id;
-
-        // Notify assigned user
-        if (reworkAssignedTo) {
-          notifyReworkCreated(tenantId, reworkJob.id, reworkAssignedTo).catch(
-            (err) => console.error('Notification error:', err)
-          );
-        }
-
-        // Create audit log for rework
-        await createAuditLog({
-          tenantId,
-          userId: inspectedBy,
-          action: 'REWORK_CREATE',
-          entityType: 'ReworkJob',
-          entityId: reworkJob.id,
-          newData: {
-            sourceDNId: returnRecord.dnId,
-            reason: 'RETURN_INSPECTION',
-          },
-        });
-      } else if (result === 'SCRAP') {
-        // Create wastage records and stock transactions
-        const returnItems = Array.isArray(returnRecord.items)
-          ? returnRecord.items
-          : typeof returnRecord.items === 'string'
-          ? JSON.parse(returnRecord.items)
-          : [];
-
-        for (const item of returnItems) {
-          // Find inventory item
-          const inventoryItem = await tx.inventoryItem.findFirst({
-            where: {
-              id: item.itemId,
-              tenantId,
-            },
-          });
-
-          if (inventoryItem) {
-            // Create wastage record
-            await tx.wastageRecord.create({
-              data: {
-                tenantId,
-                itemId: item.itemId,
-                qty: item.qty,
-                reason: `Return scrap: ${remarks || 'N/A'}`,
-                recordedBy: inspectedBy,
-                recordedAt: new Date(),
-              },
-            });
-
-            // Create stock transaction OUT
-            const balanceAfter = inventoryItem.availableQty - item.qty;
-            await tx.stockTransaction.create({
-              data: {
-                tenantId,
-                itemId: item.itemId,
-                type: 'OUT',
-                referenceType: 'ADJUST',
-                referenceId: id,
-                qty: item.qty,
-                balanceAfter: Math.max(0, balanceAfter),
-                remarks: `Scrap from return ${returnRecord.id}`,
-                createdBy: inspectedBy,
-              },
-            });
-
-            // Update inventory item
-            await tx.inventoryItem.update({
-              where: { id: item.itemId },
-              data: {
-                availableQty: Math.max(0, balanceAfter),
-              },
-            });
-          }
-        }
-      } else if (result === 'ACCEPT_RETURN') {
-        // Put items back to inventory
-        const returnItems = Array.isArray(returnRecord.items)
-          ? returnRecord.items
-          : typeof returnRecord.items === 'string'
-          ? JSON.parse(returnRecord.items)
-          : [];
-
-        for (const item of returnItems) {
-          // Find inventory item
-          const inventoryItem = await tx.inventoryItem.findFirst({
-            where: {
-              id: item.itemId,
-              tenantId,
-            },
-          });
-
-          if (inventoryItem) {
-            // Create stock transaction IN
-            const balanceAfter = inventoryItem.availableQty + item.qty;
-            await tx.stockTransaction.create({
-              data: {
-                tenantId,
-                itemId: item.itemId,
-                type: 'IN',
-                referenceType: 'RETURN',
-                referenceId: id,
-                qty: item.qty,
-                balanceAfter,
-                remarks: `Return accepted: ${remarks || 'N/A'}`,
-                createdBy: inspectedBy,
-              },
-            });
-
-            // Update inventory item
-            await tx.inventoryItem.update({
-              where: { id: item.itemId },
-              data: {
-                availableQty: balanceAfter,
-              },
-            });
-          }
-        }
-      }
-
-      // Create audit log for inspection
-      await createAuditLog({
-        tenantId,
-        userId: inspectedBy,
-        action: 'RETURN_INSPECTION',
-        entityType: 'ReturnRecord',
-        entityId: id,
-        oldData: {
-          status: returnRecord.status,
-          outcome: returnRecord.outcome,
-        },
-        newData: {
-          status: 'INSPECTED',
-          outcome: result,
-          inspectedBy,
-        },
-      });
-
-      return { updatedReturn, reworkJobId };
-    });
-
-    res.json({
-      returnRecord: result_data.updatedReturn,
-      reworkJobId: result_data.reworkJobId || null,
-    });
+    res.json(returnRecords);
   } catch (error) {
-    console.error('Inspect return error:', error);
+    console.error('Get returns error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
 /**
- * Get return record by ID
+ * Get Return detail (with DN/Invoice context & photos)
  * GET /api/returns/:id
  */
 const getReturnById = async (req, res) => {
@@ -366,13 +259,25 @@ const getReturnById = async (req, res) => {
       include: {
         deliveryNote: {
           include: {
-            dnLines: true,
+            items: true,
             project: {
               select: {
                 projectCode: true,
                 name: true,
               },
             },
+            client: {
+              select: {
+                id: true,
+                name: true,
+                companyName: true,
+              },
+            },
+          },
+        },
+        invoice: {
+          include: {
+            invoiceLines: true,
           },
         },
         client: {
@@ -380,6 +285,17 @@ const getReturnById = async (req, res) => {
             id: true,
             name: true,
             companyName: true,
+            email: true,
+            phone: true,
+          },
+        },
+        creditNotes: {
+          select: {
+            id: true,
+            creditNoteNumber: true,
+            amount: true,
+            status: true,
+            applied: true,
           },
         },
       },
@@ -397,77 +313,357 @@ const getReturnById = async (req, res) => {
 };
 
 /**
- * Get return records with filters
- * GET /api/returns
+ * Inspect return & set outcome
+ * POST /api/returns/:id/inspect
  */
-const getReturnList = async (req, res) => {
+const inspectReturn = async (req, res) => {
   try {
+    const { id } = req.params;
+    const {
+      inspectedBy,
+      inspectedAt,
+      outcome,
+      remarks,
+      createRework,
+      reworkAssignedTo,
+    } = req.body;
     const tenantId = req.tenantId;
-    const { dnId, clientId, status, outcome } = req.query;
 
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
-    const where = {
-      tenantId,
-    };
-
-    if (dnId) {
-      where.dnId = dnId;
+    if (!inspectedBy || !outcome) {
+      return res.status(400).json({
+        message: 'inspectedBy and outcome are required',
+      });
     }
 
-    if (clientId) {
-      where.clientId = clientId;
+    const validOutcomes = ['ACCEPT_RETURN', 'REWORK', 'SCRAP', 'REPLACE'];
+    if (!validOutcomes.includes(outcome)) {
+      return res.status(400).json({
+        message: `outcome must be one of: ${validOutcomes.join(', ')}`,
+      });
     }
 
-    if (status) {
-      where.status = status;
-    }
-
-    if (outcome) {
-      where.outcome = outcome;
-    }
-
-    const returnRecords = await prisma.returnRecord.findMany({
-      where,
+    // Get return record
+    const returnRecord = await prisma.returnRecord.findFirst({
+      where: {
+        id,
+        tenantId,
+      },
       include: {
         deliveryNote: {
-          select: {
-            id: true,
-            dnNumber: true,
-            project: {
-              select: {
-                projectCode: true,
-                name: true,
-              },
-            },
+          include: {
+            items: true,
           },
         },
-        client: {
-          select: {
-            id: true,
-            name: true,
-            companyName: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
+        invoice: true,
       },
     });
 
-    res.json(returnRecords);
+    if (!returnRecord) {
+      return res.status(404).json({ message: 'Return record not found' });
+    }
+
+    if (returnRecord.status !== 'PENDING') {
+      return res.status(400).json({
+        message: 'Return record has already been inspected',
+      });
+    }
+
+    // Use transaction for atomicity
+    const result = await prisma.$transaction(async (tx) => {
+      // Update return record
+      const updatedReturn = await tx.returnRecord.update({
+        where: { id },
+        data: {
+          status: 'INSPECTED',
+          inspectedBy,
+          inspectedAt: inspectedAt ? new Date(inspectedAt) : new Date(),
+          outcome,
+          notes: remarks || returnRecord.notes || null,
+        },
+      });
+
+      let creditNoteId = null;
+      let reworkJobId = null;
+      let replacementDNId = null;
+
+      // Process based on outcome
+      if (outcome === 'ACCEPT_RETURN') {
+        const acceptResult = await processAcceptReturn(
+          updatedReturn,
+          tenantId,
+          inspectedBy,
+          remarks,
+          tx
+        );
+        creditNoteId = acceptResult.creditNoteId;
+
+        // Update status to ACCEPTED
+        await tx.returnRecord.update({
+          where: { id },
+          data: { status: 'ACCEPTED' },
+        });
+
+        // Create audit log
+        await createAuditLog({
+          tenantId,
+          userId: inspectedBy,
+          action: 'RETURN_ACCEPTED',
+          entityType: 'ReturnRecord',
+          entityId: id,
+          oldData: {
+            status: returnRecord.status,
+          },
+          newData: {
+            status: 'ACCEPTED',
+            outcome: 'ACCEPT_RETURN',
+            creditNoteId,
+          },
+        });
+
+        // Notify finance
+        notifyReturnInspection(tenantId, id, 'ACCEPT_RETURN', creditNoteId).catch((err) =>
+          console.error('Notification error:', err)
+        );
+      } else if (outcome === 'REWORK') {
+        const reworkJob = await processReworkReturn(
+          updatedReturn,
+          tenantId,
+          inspectedBy,
+          remarks,
+          reworkAssignedTo,
+          tx
+        );
+        reworkJobId = reworkJob.id;
+
+        // Update status to REWORK
+        await tx.returnRecord.update({
+          where: { id },
+          data: { status: 'REWORK' },
+        });
+
+        // Create audit log
+        await createAuditLog({
+          tenantId,
+          userId: inspectedBy,
+          action: 'RETURN_REWORK_CREATED',
+          entityType: 'ReturnRecord',
+          entityId: id,
+          newData: {
+            status: 'REWORK',
+            outcome: 'REWORK',
+            reworkJobId,
+          },
+        });
+
+        // Notify production/PM
+        if (reworkAssignedTo) {
+          notifyReworkCreated(tenantId, reworkJob.id, reworkAssignedTo).catch((err) =>
+            console.error('Notification error:', err)
+          );
+        }
+      } else if (outcome === 'SCRAP') {
+        const scrapResult = await processScrapReturn(
+          updatedReturn,
+          tenantId,
+          inspectedBy,
+          remarks,
+          tx
+        );
+        creditNoteId = scrapResult.creditNoteId;
+
+        // Update status to SCRAPPED
+        await tx.returnRecord.update({
+          where: { id },
+          data: { status: 'SCRAPPED' },
+        });
+
+        // Create audit log
+        await createAuditLog({
+          tenantId,
+          userId: inspectedBy,
+          action: 'RETURN_SCRAPPED',
+          entityType: 'ReturnRecord',
+          entityId: id,
+          newData: {
+            status: 'SCRAPPED',
+            outcome: 'SCRAP',
+            creditNoteId,
+          },
+        });
+
+        // Notify finance
+        notifyReturnInspection(tenantId, id, 'SCRAP', creditNoteId).catch((err) =>
+          console.error('Notification error:', err)
+        );
+      } else if (outcome === 'REPLACE') {
+        // Update status - replacement DN will be created separately
+        await tx.returnRecord.update({
+          where: { id },
+          data: { status: 'INSPECTED' }, // Keep as INSPECTED until replacement DN is created
+        });
+
+        // Create audit log
+        await createAuditLog({
+          tenantId,
+          userId: inspectedBy,
+          action: 'RETURN_REPLACEMENT_INITIATED',
+          entityType: 'ReturnRecord',
+          entityId: id,
+          newData: {
+            status: 'INSPECTED',
+            outcome: 'REPLACE',
+          },
+        });
+
+        // Notify dispatch
+        notifyReturnInspection(tenantId, id, 'REPLACE', null).catch((err) =>
+          console.error('Notification error:', err)
+        );
+      }
+
+      // Create audit log for inspection
+      await createAuditLog({
+        tenantId,
+        userId: inspectedBy,
+        action: 'RETURN_INSPECT',
+        entityType: 'ReturnRecord',
+        entityId: id,
+        oldData: {
+          status: returnRecord.status,
+          outcome: returnRecord.outcome,
+        },
+        newData: {
+          status: updatedReturn.status,
+          outcome,
+          inspectedBy,
+          inspectedAt: updatedReturn.inspectedAt,
+        },
+      });
+
+      return {
+        updatedReturn,
+        creditNoteId,
+        reworkJobId,
+        replacementDNId,
+      };
+    });
+
+    res.json({
+      success: true,
+      returnId: id,
+      outcome,
+      creditNoteId: result.creditNoteId || null,
+      reworkJobId: result.reworkJobId || null,
+    });
   } catch (error) {
-    console.error('Get return list error:', error);
+    console.error('Inspect return error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+/**
+ * Create replacement DN (if REPLACE outcome)
+ * POST /api/returns/:id/replace
+ */
+const createReplacementDN = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { createdBy, vehicle, items, remarks } = req.body;
+    const tenantId = req.tenantId;
+
+    if (!tenantId) {
+      return res.status(400).json({ message: 'Tenant ID is required' });
+    }
+
+    if (!createdBy || !items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        message: 'createdBy and items (non-empty array) are required',
+      });
+    }
+
+    // Get return record
+    const returnRecord = await prisma.returnRecord.findFirst({
+      where: {
+        id,
+        tenantId,
+      },
+    });
+
+    if (!returnRecord) {
+      return res.status(404).json({ message: 'Return record not found' });
+    }
+
+    if (returnRecord.outcome !== 'REPLACE') {
+      return res.status(400).json({
+        message: 'Return record outcome must be REPLACE to create replacement DN',
+      });
+    }
+
+    // Validate replacement quantities don't exceed returned quantities
+    const returnItems = Array.isArray(returnRecord.items)
+      ? returnRecord.items
+      : typeof returnRecord.items === 'string'
+      ? JSON.parse(returnRecord.items)
+      : [];
+
+    for (const replacementItem of items) {
+      if (replacementItem.dnLineId) {
+        const returnItem = returnItems.find((ri) => ri.dnLineId === replacementItem.dnLineId);
+        if (returnItem && replacementItem.qty > returnItem.qty) {
+          return res.status(400).json({
+            message: `Replacement quantity (${replacementItem.qty}) cannot exceed returned quantity (${returnItem.qty}) for line ${replacementItem.dnLineId}`,
+          });
+        }
+      }
+    }
+
+    // Use transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Create replacement DN
+      const replacementDN = await createReplacementDNService(
+        returnRecord,
+        tenantId,
+        createdBy,
+        vehicle,
+        items,
+        remarks,
+        tx
+      );
+
+      // Create audit log
+      await createAuditLog({
+        tenantId,
+        userId: createdBy,
+        action: 'RETURN_REPLACEMENT_CREATED',
+        entityType: 'ReturnRecord',
+        entityId: id,
+        newData: {
+          replacementDNId: replacementDN.id,
+          replacementDNNumber: replacementDN.dnNumber,
+        },
+      });
+
+      return replacementDN;
+    });
+
+    res.status(201).json({
+      dnId: result.id,
+      dnNumber: result.dnNumber,
+    });
+  } catch (error) {
+    console.error('Create replacement DN error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
 module.exports = {
   createReturn,
-  inspectReturn,
+  getReturns,
   getReturnById,
-  getReturnList,
+  inspectReturn,
+  createReplacementDN,
 };
-

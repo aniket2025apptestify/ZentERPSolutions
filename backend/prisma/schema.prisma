@@ -369,21 +369,27 @@ model ReworkJob {
 }
 
 model ReturnRecord {
-  id           String       @id @default(cuid())
-  tenantId     String
-  dnId         String
-  clientId     String
-  reason       String
-  items        Json // [{dnLineId, itemId, qty, remarks}]
-  status       String // PENDING | INSPECTED | ACCEPTED | REJECTED
-  inspectedBy  String?
-  inspectedAt  DateTime?
-  outcome      String? // REWORK | SCRAP | ACCEPT_RETURN
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  deliveryNote DeliveryNote @relation(fields: [dnId], references: [id], onDelete: Cascade)
-  client       Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  id            String       @id @default(cuid())
+  tenantId      String
+  returnNumber  String       @unique
+  dnId          String?
+  invoiceId     String?
+  clientId      String
+  createdBy     String
+  reason        String?
+  items         Json         // [{ dnLineId, itemId?, description, qty, uom, photos: [docId] }]
+  status        String       // PENDING | INSPECTED | ACCEPTED | REJECTED | REWORK | SCRAPPED
+  inspectedBy   String?
+  inspectedAt   DateTime?
+  outcome       String?      // ACCEPT_RETURN | REWORK | SCRAP | REPLACE
+  notes         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  deliveryNote  DeliveryNote? @relation(fields: [dnId], references: [id], onDelete: Cascade)
+  invoice       Invoice?     @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  client        Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tenant        Tenant       @relation(fields: [tenantId], references: [id])
+  creditNotes   CreditNote[]
 }
 
 model Notification {
@@ -602,6 +608,7 @@ model Invoice {
   invoiceLines  InvoiceLine[]
   payments      Payment[]
   creditNotes   CreditNote[]
+  returnRecords ReturnRecord[]
 }
 
 model InvoiceLine {
@@ -630,20 +637,24 @@ model Payment {
 }
 
 model CreditNote {
-  id              String   @id @default(cuid())
-  tenantId        String
-  creditNoteNumber String  @unique
-  invoiceId       String?
-  clientId        String
-  amount          Float
-  reason          String?
-  createdBy       String
-  createdAt       DateTime @default(now())
-  applied         Boolean  @default(false)
-  appliedTo       Json?    // [{ invoiceId, amountApplied }]
-  invoice         Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
-  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id               String        @id @default(cuid())
+  tenantId         String
+  creditNoteNumber String        @unique
+  returnRecordId   String?
+  invoiceId        String?
+  clientId         String
+  amount           Float
+  reason           String?
+  createdBy        String
+  applied          Boolean       @default(false)
+  appliedTo        Json?         // [{ invoiceId, amount }]
+  status           String        @default("DRAFT") // DRAFT | APPLIED | CLOSED
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @default(now()) @updatedAt
+  returnRecord     ReturnRecord? @relation(fields: [returnRecordId], references: [id], onDelete: SetNull)
+  invoice          Invoice?      @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  client           Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tenant           Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model Employee {

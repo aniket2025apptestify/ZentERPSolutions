@@ -11,11 +11,12 @@ const createCreditNote = async (req, res) => {
   try {
     const {
       invoiceId,
+      returnRecordId,
       clientId,
       amount,
       reason,
       createdBy,
-      autoApply = false,
+      applyToInvoice = false,
     } = req.body;
     const tenantId = req.tenantId;
 
@@ -44,6 +45,27 @@ const createCreditNote = async (req, res) => {
       return res.status(404).json({ message: 'Client not found' });
     }
 
+    // Validate return record if provided
+    let returnRecord = null;
+    if (returnRecordId) {
+      returnRecord = await prisma.returnRecord.findFirst({
+        where: {
+          id: returnRecordId,
+          tenantId,
+          clientId, // Ensure return belongs to same client
+        },
+      });
+
+      if (!returnRecord) {
+        return res.status(404).json({ message: 'Return record not found or does not belong to client' });
+      }
+
+      // If return has invoice, use it
+      if (returnRecord.invoiceId && !invoiceId) {
+        invoiceId = returnRecord.invoiceId;
+      }
+    }
+
     // Validate invoice if provided
     let invoice = null;
     if (invoiceId) {
@@ -62,10 +84,14 @@ const createCreditNote = async (req, res) => {
         return res.status(404).json({ message: 'Invoice not found or does not belong to client' });
       }
 
-      // Check if credit note amount exceeds invoice total
-      if (creditNoteAmount > invoice.total) {
+      // Calculate outstanding amount
+      const paidAmount = invoice.payments.reduce((sum, p) => sum + p.amount, 0);
+      const outstanding = invoice.total - paidAmount;
+
+      // Check if credit note amount exceeds outstanding (unless tenant policy allows excess)
+      if (creditNoteAmount > outstanding) {
         return res.status(400).json({
-          message: `Credit note amount (${creditNoteAmount}) cannot exceed invoice total (${invoice.total})`,
+          message: `Credit note amount (${creditNoteAmount}) cannot exceed invoice outstanding (${outstanding})`,
         });
       }
     }
@@ -80,23 +106,23 @@ const createCreditNote = async (req, res) => {
         data: {
           tenantId,
           creditNoteNumber,
+          returnRecordId: returnRecordId || null,
           invoiceId: invoiceId || null,
           clientId,
           amount: creditNoteAmount,
           reason: reason || null,
           createdBy: createdBy || req.user?.userId || null,
-          applied: autoApply,
-          appliedTo: autoApply && invoiceId
-            ? [{ invoiceId, amountApplied: creditNoteAmount }]
+          applied: applyToInvoice,
+          status: applyToInvoice ? 'APPLIED' : 'DRAFT',
+          appliedTo: applyToInvoice && invoiceId
+            ? [{ invoiceId, amount: creditNoteAmount }]
             : null,
         },
       });
 
       // Auto-apply to invoice if requested
-      if (autoApply && invoiceId && invoice) {
+      if (applyToInvoice && invoiceId && invoice) {
         // Update invoice total (reduce by credit note amount)
-        // Note: This is a simplified approach. In production, you might want to track
-        // credit note applications separately without modifying invoice.total
         const paidAmount = invoice.payments.reduce((sum, p) => sum + p.amount, 0);
         const newTotal = invoice.total - creditNoteAmount;
         const newOutstanding = newTotal - paidAmount;
@@ -136,16 +162,18 @@ const createCreditNote = async (req, res) => {
       entityId: result.id,
       newData: {
         creditNoteNumber: result.creditNoteNumber,
+        returnRecordId: returnRecordId || null,
         invoiceId: invoiceId || null,
         amount: creditNoteAmount,
-        applied: autoApply,
+        applied: applyToInvoice,
+        status: result.status,
       },
     });
 
     res.status(201).json({
       creditNoteId: result.id,
       creditNoteNumber: result.creditNoteNumber,
-      creditNote: result,
+      status: result.status,
     });
   } catch (error) {
     console.error('Create credit note error:', error);
@@ -220,11 +248,12 @@ const applyCreditNote = async (req, res) => {
     // Use transaction
     const result = await prisma.$transaction(async (tx) => {
       // Update credit note
-      const appliedTo = [{ invoiceId, amountApplied: appliedAmount }];
+      const appliedTo = [{ invoiceId, amount: appliedAmount }];
       const updatedCreditNote = await tx.creditNote.update({
         where: { id },
         data: {
           applied: true,
+          status: 'APPLIED',
           appliedTo,
         },
       });
@@ -277,11 +306,11 @@ const applyCreditNote = async (req, res) => {
 
 /**
  * Get all credit notes
- * GET /api/credit-notes
+ * GET /api/credit-notes?clientId=&status=&from=&to=
  */
 const getCreditNotes = async (req, res) => {
   try {
-    const { clientId, invoiceId, applied } = req.query;
+    const { clientId, invoiceId, status, applied, from, to } = req.query;
     const tenantId = req.tenantId;
 
     if (!tenantId) {
@@ -300,8 +329,22 @@ const getCreditNotes = async (req, res) => {
       where.invoiceId = invoiceId;
     }
 
+    if (status) {
+      where.status = status;
+    }
+
     if (applied !== undefined) {
       where.applied = applied === 'true';
+    }
+
+    if (from || to) {
+      where.createdAt = {};
+      if (from) {
+        where.createdAt.gte = new Date(from);
+      }
+      if (to) {
+        where.createdAt.lte = new Date(to);
+      }
     }
 
     const creditNotes = await prisma.creditNote.findMany({
@@ -318,6 +361,12 @@ const getCreditNotes = async (req, res) => {
           select: {
             id: true,
             invoiceNumber: true,
+          },
+        },
+        returnRecord: {
+          select: {
+            id: true,
+            returnNumber: true,
           },
         },
       },

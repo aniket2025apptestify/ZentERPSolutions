@@ -188,6 +188,59 @@ const notifyReworkCreated = async (tenantId, reworkJobId, assignedTo) => {
   }
 };
 
+/**
+ * Notify on Return inspection outcome
+ * @param {String} tenantId - Tenant ID
+ * @param {String} returnRecordId - Return record ID
+ * @param {String} outcome - Inspection outcome (ACCEPT_RETURN, SCRAP, REPLACE)
+ * @param {String} creditNoteId - Credit note ID if created (optional)
+ */
+const notifyReturnInspection = async (tenantId, returnRecordId, outcome, creditNoteId) => {
+  try {
+    const userIds = [];
+
+    if (outcome === 'ACCEPT_RETURN' || outcome === 'SCRAP') {
+      // Notify finance for credit note handling
+      const financeRoles = ['FINANCE', 'DIRECTOR'];
+      const financeUserIds = await getUsersByRoles(tenantId, financeRoles);
+      userIds.push(...financeUserIds);
+    }
+
+    if (outcome === 'REPLACE') {
+      // Notify dispatch for replacement scheduling
+      const dispatchRoles = ['DISPATCH', 'PROJECT_MANAGER'];
+      const dispatchUserIds = await getUsersByRoles(tenantId, dispatchRoles);
+      userIds.push(...dispatchUserIds);
+    }
+
+    // Remove duplicates
+    const uniqueUserIds = [...new Set(userIds)];
+
+    if (uniqueUserIds.length > 0) {
+      const outcomeMessages = {
+        ACCEPT_RETURN: 'Return accepted - items restocked. Credit note may be required.',
+        SCRAP: 'Return scrapped - wastage recorded. Credit note may be required.',
+        REPLACE: 'Replacement DN required for return.',
+      };
+
+      await createNotificationsForUsers(uniqueUserIds, {
+        tenantId,
+        type: 'RETURN_INSPECTED',
+        title: `Return Inspection: ${outcome}`,
+        message: outcomeMessages[outcome] || `Return inspection completed with outcome: ${outcome}`,
+        link: `/returns/${returnRecordId}`,
+        metadata: {
+          returnRecordId,
+          outcome,
+          creditNoteId: creditNoteId || null,
+        },
+      });
+    }
+  } catch (error) {
+    console.error('Error notifying return inspection:', error);
+  }
+};
+
 module.exports = {
   createNotification,
   createNotificationsForUsers,
@@ -195,5 +248,6 @@ module.exports = {
   notifyQCFail,
   notifyReturnCreated,
   notifyReworkCreated,
+  notifyReturnInspection,
 };
 

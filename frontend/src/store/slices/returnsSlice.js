@@ -15,10 +15,10 @@ export const fetchReturns = createAsyncThunk(
   async (filters = {}, { rejectWithValue }) => {
     try {
       const params = new URLSearchParams();
-      if (filters.dnId) params.append('dnId', filters.dnId);
-      if (filters.clientId) params.append('clientId', filters.clientId);
       if (filters.status) params.append('status', filters.status);
-      if (filters.outcome) params.append('outcome', filters.outcome);
+      if (filters.clientId) params.append('clientId', filters.clientId);
+      if (filters.from) params.append('from', filters.from);
+      if (filters.to) params.append('to', filters.to);
 
       const response = await api.get(
         `/api/returns${params.toString() ? `?${params.toString()}` : ''}`
@@ -69,6 +69,20 @@ export const inspectReturn = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || 'Failed to inspect return'
+      );
+    }
+  }
+);
+
+export const createReplacementDN = createAsyncThunk(
+  'returns/createReplacementDN',
+  async ({ id, payload }, { rejectWithValue }) => {
+    try {
+      const response = await api.post(`/api/returns/${id}/replace`, payload);
+      return { id, ...response.data };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to create replacement DN'
       );
     }
   }
@@ -143,18 +157,28 @@ const returnsSlice = createSlice({
       })
       .addCase(inspectReturn.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        const index = state.list.findIndex(
-          (r) => r.id === action.payload.returnRecord.id
-        );
-        if (index !== -1) {
-          state.list[index] = action.payload.returnRecord;
-        }
-        if (state.current && state.current.id === action.payload.returnRecord.id) {
-          state.current = action.payload.returnRecord;
+        // Refresh current return if it matches
+        if (state.current && state.current.id === action.payload.returnId) {
+          // Refetch to get updated data
         }
         state.error = null;
       })
       .addCase(inspectReturn.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload;
+      });
+
+    // Create replacement DN
+    builder
+      .addCase(createReplacementDN.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(createReplacementDN.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.error = null;
+      })
+      .addCase(createReplacementDN.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload;
       });

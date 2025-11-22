@@ -45,7 +45,10 @@ export const fetchCreditNotes = createAsyncThunk(
       const params = new URLSearchParams();
       if (filters.clientId) params.append('clientId', filters.clientId);
       if (filters.invoiceId) params.append('invoiceId', filters.invoiceId);
+      if (filters.status) params.append('status', filters.status);
       if (filters.applied !== undefined) params.append('applied', filters.applied);
+      if (filters.from) params.append('from', filters.from);
+      if (filters.to) params.append('to', filters.to);
 
       const response = await api.get(
         `/api/credit-notes${params.toString() ? `?${params.toString()}` : ''}`
@@ -93,8 +96,9 @@ const creditNotesSlice = createSlice({
       })
       .addCase(createCreditNote.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.current = action.payload.creditNote;
-        state.list.unshift(action.payload.creditNote);
+        // Note: API returns { creditNoteId, creditNoteNumber, status }
+        // We may need to refetch to get full credit note
+        state.error = null;
       })
       .addCase(createCreditNote.rejected, (state, action) => {
         state.status = 'failed';

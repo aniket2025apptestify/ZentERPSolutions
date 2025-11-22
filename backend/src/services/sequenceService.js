@@ -593,6 +593,62 @@ const generateCreditNoteNumber = async (tenantId) => {
   }
 };
 
+/**
+ * Generate next Return number for a tenant
+ * Format: RTN-{TENANT_CODE}-{YYYYMMDD}-{NNNN}
+ * @param {String} tenantId - Tenant ID
+ * @returns {Promise<String>} Generated return number
+ */
+const generateReturnNumber = async (tenantId) => {
+  try {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { code: true },
+    });
+
+    if (!tenant) {
+      throw new Error('Tenant not found');
+    }
+
+    const tenantCode = tenant.code.toUpperCase();
+    const today = new Date();
+    const dateStr = today.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+    const prefix = `RTN-${tenantCode}-${dateStr}-`;
+
+    const lastReturn = await prisma.returnRecord.findFirst({
+      where: {
+        tenantId: tenantId,
+        returnNumber: {
+          startsWith: prefix,
+        },
+      },
+      orderBy: {
+        returnNumber: 'desc',
+      },
+      select: {
+        returnNumber: true,
+      },
+    });
+
+    let counter = 1;
+    if (lastReturn) {
+      const lastCounter = parseInt(
+        lastReturn.returnNumber.slice(prefix.length),
+        10
+      );
+      if (!isNaN(lastCounter)) {
+        counter = lastCounter + 1;
+      }
+    }
+
+    const counterStr = counter.toString().padStart(4, '0');
+    return `${prefix}${counterStr}`;
+  } catch (error) {
+    console.error('Error generating return number:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   generateSWONumber,
   generateQuotationNumber,
@@ -604,5 +660,6 @@ module.exports = {
   generateDNNumber,
   generateInvoiceNumber,
   generateCreditNoteNumber,
+  generateReturnNumber,
 };
 
