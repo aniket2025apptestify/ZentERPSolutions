@@ -69,6 +69,12 @@ import SWODetail from './pages/subcontract/SWODetail';
 import IssueMaterial from './pages/subcontract/IssueMaterial';
 import ReceiveGoods from './pages/subcontract/ReceiveGoods';
 import CreateSubcontractInvoice from './pages/subcontract/CreateInvoice';
+import EmployeeDirectory from './pages/hr/EmployeeDirectory';
+import AttendanceDashboard from './pages/hr/AttendanceDashboard';
+import LeaveManagement from './pages/hr/LeaveManagement';
+import PayrollGeneration from './pages/hr/PayrollGeneration';
+import PayslipViewer from './pages/hr/PayslipViewer';
+import ExpiringDocuments from './pages/hr/ExpiringDocuments';
 import './App.css';
 
 function App() {
@@ -733,6 +739,80 @@ function App() {
                   <Layout>
                     <CreateSubcontractInvoice />
                   </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* HR Routes */}
+            <Route
+              path="/hr/employees"
+              element={
+                <ProtectedRoute>
+                  <RoleBasedRoute allowedRoles={['DIRECTOR', 'HR', 'FINANCE']}>
+                    <Layout>
+                      <EmployeeDirectory />
+                    </Layout>
+                  </RoleBasedRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/hr/attendance"
+              element={
+                <ProtectedRoute>
+                  <RoleBasedRoute allowedRoles={['DIRECTOR', 'HR', 'PRODUCTION']}>
+                    <Layout>
+                      <AttendanceDashboard />
+                    </Layout>
+                  </RoleBasedRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/hr/leaves"
+              element={
+                <ProtectedRoute>
+                  <RoleBasedRoute allowedRoles={['DIRECTOR', 'HR']}>
+                    <Layout>
+                      <LeaveManagement />
+                    </Layout>
+                  </RoleBasedRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/hr/payroll"
+              element={
+                <ProtectedRoute>
+                  <RoleBasedRoute allowedRoles={['DIRECTOR', 'HR', 'FINANCE']}>
+                    <Layout>
+                      <PayrollGeneration />
+                    </Layout>
+                  </RoleBasedRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/hr/payslip/:id"
+              element={
+                <ProtectedRoute>
+                  <RoleBasedRoute allowedRoles={['DIRECTOR', 'HR', 'FINANCE']}>
+                    <Layout>
+                      <PayslipViewer />
+                    </Layout>
+                  </RoleBasedRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/hr/alerts"
+              element={
+                <ProtectedRoute>
+                  <RoleBasedRoute allowedRoles={['DIRECTOR', 'HR']}>
+                    <Layout>
+                      <ExpiringDocuments />
+                    </Layout>
+                  </RoleBasedRoute>
                 </ProtectedRoute>
               }
             />

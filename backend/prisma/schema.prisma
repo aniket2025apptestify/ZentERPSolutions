@@ -48,6 +48,9 @@ model Tenant {
   creditNotes           CreditNote[]
   subcontractInvoices   SubcontractInvoice[]
   subcontractReceipts   SubcontractReceipt[]
+  leaveRequests         LeaveRequest[]
+  attendances           Attendance[]
+  payrollRecords        PayrollRecord[]
 }
 
 model User {
@@ -660,40 +663,81 @@ model CreditNote {
 model Employee {
   id             String          @id @default(cuid())
   tenantId       String
+  employeeCode   String?         @unique
   name           String
+  email          String?
+  phone          String?
   designation    String?
-  salary         Float?
+  department     String?
+  dateOfJoining  DateTime?
+  salary         Float?          // basic monthly salary
+  salaryType     String?         // MONTHLY | HOURLY | DAILY
+  bankDetails    Json?
   visaExpiry     DateTime?
   passportExpiry DateTime?
+  address        String?
+  isActive       Boolean         @default(true)
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   attendances    Attendance[]
-  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   payrollRecords PayrollRecord[]
+  leaveRequests  LeaveRequest[]
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model Attendance {
-  id         String   @id @default(cuid())
-  employeeId String
-  date       DateTime
-  status     String
-  hours      Float?
-  jobLink    Json?
-  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  date          DateTime
+  status        String   // PRESENT | ABSENT | LEAVE | HALF_DAY
+  checkIn       DateTime?
+  checkOut      DateTime?
+  hours         Float?   // computed hours
+  jobLink       Json?    // { projectId, jobId } optional
+  remarks       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model PayrollRecord {
-  id          String   @id @default(cuid())
-  employeeId  String
-  month       Int
-  year        Int
-  basicSalary Float
-  overtime    Float?
-  allowances  Float?
-  deductions  Float?
-  netPay      Float
-  generatedAt DateTime @default(now())
-  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  month         Int
+  year          Int
+  basicSalary   Float
+  daysPresent   Int
+  overtimeHours Float?
+  overtimePay   Float?
+  allowances    Float?
+  deductions    Float?
+  grossPay      Float
+  netPay        Float
+  generatedAt   DateTime @default(now())
+  paid          Boolean  @default(false)
+  paidAt        DateTime?
+  paymentRef    String?
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model LeaveRequest {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  fromDate      DateTime
+  toDate        DateTime
+  leaveType     String   // SICK | CASUAL | EARNED | UNPAID
+  status        String   // PENDING | APPROVED | REJECTED
+  reason        String?
+  appliedAt     DateTime @default(now())
+  decidedBy     String?
+  decidedAt     DateTime?
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model MaterialRequest {

@@ -262,10 +262,136 @@ const reverseInvoiceJournal = async (invoice, tenantId, userId) => {
   }
 };
 
+/**
+ * Post journal entries for payroll generation
+ * Debit Payroll Expense, Credit Payroll Payable
+ * @param {Object} payrollRecord - PayrollRecord object
+ * @param {String} tenantId - Tenant ID
+ * @param {String} userId - User ID
+ * @returns {Promise<Object>} Journal entries created
+ */
+const postPayrollJournal = async (payrollRecord, tenantId, userId) => {
+  try {
+    const journalData = {
+      tenantId,
+      referenceType: 'PAYROLL',
+      referenceId: payrollRecord.id,
+      entries: [
+        {
+          account: 'PAYROLL_EXPENSE', // Payroll Expense
+          debit: payrollRecord.grossPay,
+          credit: 0,
+          description: `Payroll for employee ${payrollRecord.employeeId} - ${payrollRecord.month}/${payrollRecord.year}`,
+        },
+        {
+          account: 'PAYROLL_PAYABLE', // Payroll Payable
+          debit: 0,
+          credit: payrollRecord.netPay,
+          description: `Payroll payable for ${payrollRecord.month}/${payrollRecord.year}`,
+        },
+      ],
+    };
+
+    // If there are deductions, add entry for deductions payable (e.g., tax, insurance)
+    if (payrollRecord.deductions && payrollRecord.deductions > 0) {
+      journalData.entries.push({
+        account: 'DEDUCTIONS_PAYABLE', // Deductions Payable (tax, insurance, etc.)
+        debit: 0,
+        credit: payrollRecord.deductions,
+        description: `Deductions for payroll ${payrollRecord.month}/${payrollRecord.year}`,
+      });
+    }
+
+    // Create audit log
+    await createAuditLog({
+      tenantId,
+      userId,
+      action: 'JOURNAL_POSTED',
+      entityType: 'PayrollRecord',
+      entityId: payrollRecord.id,
+      newData: {
+        payrollId: payrollRecord.id,
+        month: payrollRecord.month,
+        year: payrollRecord.year,
+        journalEntries: journalData.entries,
+        grossPay: payrollRecord.grossPay,
+        netPay: payrollRecord.netPay,
+      },
+    });
+
+    // TODO: When GL module is implemented, create actual JournalEntry records
+
+    return journalData;
+  } catch (error) {
+    console.error('Error posting payroll journal:', error);
+    return null;
+  }
+};
+
+/**
+ * Post journal entries for payroll payment
+ * Debit Payroll Payable, Credit Bank/Cash
+ * @param {Object} payrollRecord - PayrollRecord object
+ * @param {String} tenantId - Tenant ID
+ * @param {String} userId - User ID
+ * @param {String} paymentRef - Payment reference
+ * @returns {Promise<Object>} Journal entries created
+ */
+const postPayrollPaymentJournal = async (payrollRecord, tenantId, userId, paymentRef) => {
+  try {
+    // Determine account based on payment method (default to BANK for transfers)
+    const account = paymentRef ? 'BANK' : 'CASH';
+
+    const journalData = {
+      tenantId,
+      referenceType: 'PAYROLL_PAYMENT',
+      referenceId: payrollRecord.id,
+      entries: [
+        {
+          account: 'PAYROLL_PAYABLE', // Payroll Payable
+          debit: payrollRecord.netPay,
+          credit: 0,
+          description: `Payment for payroll ${payrollRecord.month}/${payrollRecord.year}`,
+        },
+        {
+          account: account, // Bank or Cash
+          debit: 0,
+          credit: payrollRecord.netPay,
+          description: `Payroll payment ${paymentRef || 'cash'} for ${payrollRecord.month}/${payrollRecord.year}`,
+        },
+      ],
+    };
+
+    // Create audit log
+    await createAuditLog({
+      tenantId,
+      userId,
+      action: 'JOURNAL_POSTED',
+      entityType: 'PayrollRecord',
+      entityId: payrollRecord.id,
+      newData: {
+        payrollId: payrollRecord.id,
+        paymentRef,
+        journalEntries: journalData.entries,
+        amount: payrollRecord.netPay,
+      },
+    });
+
+    // TODO: When GL module is implemented, create actual JournalEntry records
+
+    return journalData;
+  } catch (error) {
+    console.error('Error posting payroll payment journal:', error);
+    return null;
+  }
+};
+
 module.exports = {
   postInvoiceJournal,
   postPaymentJournal,
   postCreditNoteJournal,
   reverseInvoiceJournal,
+  postPayrollJournal,
+  postPayrollPaymentJournal,
 };
 

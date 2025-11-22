@@ -25,6 +25,10 @@ import paymentsReducer from './slices/paymentsSlice';
 import creditNotesReducer from './slices/creditNotesSlice';
 import swoReducer from './slices/swoSlice';
 import subcontractInvoiceReducer from './slices/subcontractInvoiceSlice';
+import employeesReducer from './slices/employeesSlice';
+import attendanceReducer from './slices/attendanceSlice';
+import leaveReducer from './slices/leaveSlice';
+import payrollReducer from './slices/payrollSlice';
 
 export const store = configureStore({
   reducer: {
@@ -54,6 +58,10 @@ export const store = configureStore({
     creditNotes: creditNotesReducer,
     swo: swoReducer,
     subcontractInvoice: subcontractInvoiceReducer,
+    employees: employeesReducer,
+    attendance: attendanceReducer,
+    leaves: leaveReducer,
+    payroll: payrollReducer,
   },
 });
 

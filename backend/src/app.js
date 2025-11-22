@@ -43,6 +43,7 @@ app.use('/api/payments', require('./routes/paymentRoutes'));
 app.use('/api/credit-notes', require('./routes/creditNoteRoutes'));
 app.use('/api/reports', require('./routes/reportRoutes'));
 app.use('/api/subcontract', require('./routes/subcontractRoutes'));
+app.use('/api/hr', require('./routes/hrRoutes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
