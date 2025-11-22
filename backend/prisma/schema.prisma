@@ -46,6 +46,8 @@ model Tenant {
   drivers               Driver[]
   payments              Payment[]
   creditNotes           CreditNote[]
+  subcontractInvoices   SubcontractInvoice[]
+  subcontractReceipts   SubcontractReceipt[]
 }
 
 model User {
@@ -754,20 +756,58 @@ model VendorQuote {
 }
 
 model SubcontractWorkOrder {
-  id             String    @id @default(cuid())
-  tenantId       String
-  swoNumber      String    @unique
-  vendorId       String
-  projectId      String?
-  subGroupId     String?
-  totalAmount    Float
-  materialIssued Json?
-  status         String
-  createdAt      DateTime  @default(now())
-  project        Project?  @relation(fields: [projectId], references: [id])
-  subGroup       SubGroup? @relation(fields: [subGroupId], references: [id])
-  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  vendor         Vendor    @relation(fields: [vendorId], references: [id])
+  id                  String                 @id @default(cuid())
+  tenantId            String
+  swoNumber           String                 @unique
+  vendorId            String
+  projectId           String?
+  subGroupId          String?
+  description         String?
+  status              String                 // DRAFT | ISSUED | IN_PROGRESS | RECEIVED | CLOSED | CANCELLED
+  totalAmount         Float?
+  currency            String?
+  materialIssued      Json?                 // [{ itemId, qty, uom, batchNo }]
+  expectedStart       DateTime?
+  expectedEnd         DateTime?
+  createdBy           String
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  project             Project?               @relation(fields: [projectId], references: [id])
+  subGroup            SubGroup?              @relation(fields: [subGroupId], references: [id])
+  tenant              Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  vendor              Vendor                 @relation(fields: [vendorId], references: [id])
+  subcontractInvoices SubcontractInvoice[]
+  subcontractReceipts SubcontractReceipt[]
+}
+
+model SubcontractInvoice {
+  id              String                 @id @default(cuid())
+  tenantId        String
+  swoId           String
+  invoiceNumber   String                 @unique
+  invoiceDate     DateTime
+  amount          Float
+  status          String                 // DRAFT | SENT | PAID
+  documents       Json?
+  createdBy       String
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  swo             SubcontractWorkOrder   @relation(fields: [swoId], references: [id], onDelete: Cascade)
+  tenant          Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model SubcontractReceipt {
+  id              String                 @id @default(cuid())
+  tenantId        String
+  swoId           String
+  receivedDate    DateTime               @default(now())
+  receivedBy      String
+  items           Json                   // [{ description, itemId?, qty, uom, qualityStatus }]
+  documents       Json?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  swo             SubcontractWorkOrder   @relation(fields: [swoId], references: [id], onDelete: Cascade)
+  tenant          Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model Document {

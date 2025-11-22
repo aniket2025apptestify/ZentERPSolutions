@@ -482,6 +482,62 @@ const generateInvoiceNumber = async (tenantId) => {
 };
 
 /**
+ * Generate next Subcontract Work Order number for a tenant
+ * Format: SWO-{TENANT_CODE}-{YYYYMMDD}-{NNNN}
+ * @param {String} tenantId - Tenant ID
+ * @returns {Promise<String>} Generated SWO number
+ */
+const generateSWONumber = async (tenantId) => {
+  try {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { code: true },
+    });
+
+    if (!tenant) {
+      throw new Error('Tenant not found');
+    }
+
+    const tenantCode = tenant.code.toUpperCase();
+    const today = new Date();
+    const dateStr = today.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+    const prefix = `SWO-${tenantCode}-${dateStr}-`;
+
+    const lastSWO = await prisma.subcontractWorkOrder.findFirst({
+      where: {
+        tenantId: tenantId,
+        swoNumber: {
+          startsWith: prefix,
+        },
+      },
+      orderBy: {
+        swoNumber: 'desc',
+      },
+      select: {
+        swoNumber: true,
+      },
+    });
+
+    let counter = 1;
+    if (lastSWO) {
+      const lastCounter = parseInt(
+        lastSWO.swoNumber.slice(prefix.length),
+        10
+      );
+      if (!isNaN(lastCounter)) {
+        counter = lastCounter + 1;
+      }
+    }
+
+    const counterStr = counter.toString().padStart(4, '0');
+    return `${prefix}${counterStr}`;
+  } catch (error) {
+    console.error('Error generating SWO number:', error);
+    throw error;
+  }
+};
+
+/**
  * Generate next Credit Note number for a tenant
  * Format: {TENANT_CODE}-CN-{YYYYMMDD}-{NNNN}
  * @param {String} tenantId - Tenant ID
@@ -538,6 +594,7 @@ const generateCreditNoteNumber = async (tenantId) => {
 };
 
 module.exports = {
+  generateSWONumber,
   generateQuotationNumber,
   generateProjectCode,
   generateJobCardNumber,

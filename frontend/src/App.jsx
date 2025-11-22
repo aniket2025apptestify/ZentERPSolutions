@@ -63,6 +63,12 @@ import InvoiceDetail from './pages/invoicing/InvoiceDetail';
 import CreateInvoice from './pages/invoicing/CreateInvoice';
 import CreditNotes from './pages/invoicing/CreditNotes';
 import ARAgingReport from './pages/invoicing/ARAgingReport';
+import SWODashboard from './pages/subcontract/SWODashboard';
+import CreateSWO from './pages/subcontract/CreateSWO';
+import SWODetail from './pages/subcontract/SWODetail';
+import IssueMaterial from './pages/subcontract/IssueMaterial';
+import ReceiveGoods from './pages/subcontract/ReceiveGoods';
+import CreateSubcontractInvoice from './pages/subcontract/CreateInvoice';
 import './App.css';
 
 function App() {
@@ -664,6 +670,68 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <ARAgingReport />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Subcontract Routes */}
+            <Route
+              path="/subcontract/swo"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <SWODashboard />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/subcontract/swo/create"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <CreateSWO />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/subcontract/swo/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <SWODetail />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/subcontract/swo/:id/issue-material"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <IssueMaterial />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/subcontract/swo/:id/receive"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ReceiveGoods />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/subcontract/swo/:id/invoice"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <CreateSubcontractInvoice />
                   </Layout>
                 </ProtectedRoute>
               }

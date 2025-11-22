@@ -23,6 +23,8 @@ import driverReducer from './slices/driverSlice';
 import invoicesReducer from './slices/invoicesSlice';
 import paymentsReducer from './slices/paymentsSlice';
 import creditNotesReducer from './slices/creditNotesSlice';
+import swoReducer from './slices/swoSlice';
+import subcontractInvoiceReducer from './slices/subcontractInvoiceSlice';
 
 export const store = configureStore({
   reducer: {
@@ -50,6 +52,8 @@ export const store = configureStore({
     invoices: invoicesReducer,
     payments: paymentsReducer,
     creditNotes: creditNotesReducer,
+    swo: swoReducer,
+    subcontractInvoice: subcontractInvoiceReducer,
   },
 });
 
